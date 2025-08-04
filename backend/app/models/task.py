@@ -9,6 +9,12 @@ class TaskType(str, Enum):
     COLLECTIVE = "collective"
 
 
+class TaskPeriodicity(str, Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    SPECIAL = "special"
+
+
 class TaskStatus(str, Enum):
     PENDING = "pending"
     COMPLETED = "completed"
@@ -22,6 +28,7 @@ class Task(SQLModel, table=True):
     description: Optional[str] = None
     credits: int
     task_type: TaskType = Field(default=TaskType.INDIVIDUAL)
+    periodicity: TaskPeriodicity = Field(default=TaskPeriodicity.DAILY)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

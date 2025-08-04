@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from ..models.task import TaskType, TaskStatus
+from ..models.task import TaskType, TaskStatus, TaskPeriodicity
 
 
 class TaskCreate(BaseModel):
@@ -9,6 +9,7 @@ class TaskCreate(BaseModel):
     description: Optional[str] = None
     credits: int
     task_type: TaskType = TaskType.INDIVIDUAL
+    periodicity: TaskPeriodicity = TaskPeriodicity.DAILY
 
 
 class TaskResponse(BaseModel):
@@ -17,6 +18,7 @@ class TaskResponse(BaseModel):
     description: Optional[str]
     credits: int
     task_type: TaskType
+    periodicity: TaskPeriodicity
     is_active: bool
     created_at: datetime
     

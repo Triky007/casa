@@ -37,6 +37,61 @@ async def create_task(
     return task
 
 
+@router.put("/{task_id}", response_model=TaskResponse)
+async def update_task(
+    task_id: int,
+    task_data: TaskCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can update tasks"
+        )
+    
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # Update task fields
+    for field, value in task_data.dict().items():
+        setattr(task, field, value)
+    
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+
+@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task(
+    task_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can delete tasks"
+        )
+    
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # Instead of hard delete, set as inactive
+    task.is_active = False
+    session.add(task)
+    session.commit()
+
+
 @router.post("/assign/{task_id}", response_model=TaskAssignmentResponse)
 async def assign_task(
     task_id: int,
@@ -58,18 +113,33 @@ async def assign_task(
             detail="Task not found"
         )
     
-    # Check if user already has this task assigned and pending/completed
-    statement = select(TaskAssignment).where(
-        TaskAssignment.task_id == task_id,
-        TaskAssignment.user_id == current_user.id,
-        TaskAssignment.status.in_([TaskStatus.PENDING, TaskStatus.COMPLETED])
-    )
-    existing_assignment = session.exec(statement).first()
-    if existing_assignment:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Task already assigned to user"
+    # Para tareas individuales, permitir múltiples asignaciones a diferentes usuarios
+    # Para tareas colectivas, verificar si ya está asignada
+    if task.task_type == "collective":
+        # Verificar si la tarea colectiva ya está asignada a cualquier usuario
+        statement = select(TaskAssignment).where(
+            TaskAssignment.task_id == task_id,
+            TaskAssignment.status.in_([TaskStatus.PENDING, TaskStatus.COMPLETED])
         )
+        existing_assignment = session.exec(statement).first()
+        if existing_assignment:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Esta tarea colectiva ya está asignada a un usuario"
+            )
+    else:  # Tarea individual
+        # Solo verificar si el mismo usuario ya tiene esta tarea asignada
+        statement = select(TaskAssignment).where(
+            TaskAssignment.task_id == task_id,
+            TaskAssignment.user_id == current_user.id,
+            TaskAssignment.status.in_([TaskStatus.PENDING, TaskStatus.COMPLETED])
+        )
+        existing_assignment = session.exec(statement).first()
+        if existing_assignment:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya tienes esta tarea asignada"
+            )
     
     assignment = TaskAssignment(task_id=task_id, user_id=current_user.id)
     session.add(assignment)

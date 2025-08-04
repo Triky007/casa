@@ -3,13 +3,52 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, func
 from ..core.database import get_session
 from ..models.user import User, UserRole
-from ..models.task import TaskAssignment, TaskStatus
+from ..models.task import TaskAssignment, TaskStatus, Task
 from ..schemas.auth import UserResponse, UserCreate
-from ..schemas.user import UserUpdate, UserStats
+from ..schemas.user import UserUpdate, UserStats, PasswordChange
 from .auth import get_current_user
-from ..core.security import get_password_hash
+from ..core.security import get_password_hash, verify_password
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+
+
+@router.post("/{user_id}/change-password", status_code=status.HTTP_200_OK)
+async def change_user_password(
+    user_id: int,
+    password_change: PasswordChange,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    # Verificar si el usuario tiene permisos para cambiar esta contraseña
+    # Los administradores pueden cambiar cualquier contraseña, los usuarios solo la suya
+    if current_user.role != UserRole.ADMIN and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para cambiar esta contraseña"
+        )
+    
+    # Obtener el usuario cuya contraseña se va a cambiar
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado"
+        )
+    
+    # Si es el propio usuario cambiando su contraseña, verificar la contraseña actual
+    if current_user.id == user_id:
+        if not verify_password(password_change.current_password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La contraseña actual es incorrecta"
+            )
+    
+    # Actualizar la contraseña
+    user.password_hash = get_password_hash(password_change.new_password)
+    session.add(user)
+    session.commit()
+    
+    return {"message": "Contraseña actualizada correctamente"}
 
 
 @router.get("/me", response_model=UserResponse)
@@ -95,9 +134,18 @@ async def get_user_stats(
         )
     ).first() or 0
     
+    # Calcular el total de créditos ganados históricamente sumando los créditos de las tareas aprobadas
+    total_credits_earned = session.exec(
+        select(func.sum(Task.credits)).join(TaskAssignment).where(
+            TaskAssignment.user_id == user_id,
+            TaskAssignment.status == TaskStatus.APPROVED,
+            TaskAssignment.task_id == Task.id
+        )
+    ).first() or 0
+    
     return UserStats(
         total_tasks_completed=total_tasks_completed,
-        total_credits_earned=user.credits,
+        total_credits_earned=total_credits_earned,
         pending_tasks=pending_tasks,
         approved_tasks=approved_tasks,
         rejected_tasks=rejected_tasks

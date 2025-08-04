@@ -138,10 +138,25 @@ const Tasks: React.FC = () => {
   };
 
   const getTaskAssignment = (taskId: number): TaskAssignment | undefined => {
-    return assignments.find(assignment => 
+    // Buscar asignaciones para la tarea específica
+    const taskAssignments = assignments.filter(assignment => 
       assignment.task_id === taskId && 
       assignment.status !== 'rejected'
     );
+    
+    if (taskAssignments.length === 0) {
+      return undefined;
+    }
+    
+    // Buscar primero si el usuario actual tiene una asignación para esta tarea
+    const userAssignment = taskAssignments.find(assignment => assignment.user_id === user?.id);
+    if (userAssignment) {
+      return userAssignment;
+    }
+    
+    // Si el usuario actual no tiene una asignación, devolver la primera asignación encontrada
+    // (esto es relevante para tareas colectivas que ya están asignadas a otro usuario)
+    return taskAssignments[0];
   };
 
   const filteredTasks = tasks.filter(task => {

@@ -70,6 +70,61 @@ async def create_reward(
     return reward
 
 
+@router.put("/{reward_id}", response_model=RewardResponse)
+async def update_reward(
+    reward_id: int,
+    reward_data: RewardCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can update rewards"
+        )
+    
+    reward = session.get(Reward, reward_id)
+    if not reward:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reward not found"
+        )
+    
+    # Update reward fields
+    for field, value in reward_data.dict().items():
+        setattr(reward, field, value)
+    
+    session.add(reward)
+    session.commit()
+    session.refresh(reward)
+    return reward
+
+
+@router.delete("/{reward_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_reward(
+    reward_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can delete rewards"
+        )
+    
+    reward = session.get(Reward, reward_id)
+    if not reward:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reward not found"
+        )
+    
+    # Instead of hard delete, set as inactive
+    reward.is_active = False
+    session.add(reward)
+    session.commit()
+
+
 @router.post("/redeem/{reward_id}", response_model=RewardRedemptionResponse)
 async def redeem_reward(
     reward_id: int,
@@ -100,10 +155,21 @@ async def redeem_reward(
     session.commit()
     session.refresh(redemption)
     
-    # Load reward data
-    redemption.reward = reward
-    
-    return redemption
+    # Crear objeto de respuesta con la información de recompensa incluida
+    return RewardRedemptionResponse(
+        id=redemption.id,
+        reward_id=redemption.reward_id,
+        user_id=redemption.user_id,
+        redeemed_at=redemption.redeemed_at,
+        reward=RewardResponse(
+            id=reward.id,
+            name=reward.name,
+            description=reward.description,
+            cost=reward.cost,
+            is_active=reward.is_active,
+            created_at=reward.created_at
+        )
+    )
 
 
 @router.get("/redemptions", response_model=List[RewardRedemptionResponse])
@@ -114,8 +180,24 @@ async def get_user_redemptions(
     statement = select(RewardRedemption).where(RewardRedemption.user_id == current_user.id)
     redemptions = session.exec(statement).all()
     
-    # Load reward data for each redemption
+    # Crear objetos de respuesta con la información de recompensa incluida
+    result = []
     for redemption in redemptions:
-        redemption.reward = session.get(Reward, redemption.reward_id)
+        reward = session.get(Reward, redemption.reward_id)
+        response = RewardRedemptionResponse(
+            id=redemption.id,
+            reward_id=redemption.reward_id,
+            user_id=redemption.user_id,
+            redeemed_at=redemption.redeemed_at,
+            reward=RewardResponse(
+                id=reward.id,
+                name=reward.name,
+                description=reward.description,
+                cost=reward.cost,
+                is_active=reward.is_active,
+                created_at=reward.created_at
+            ) if reward else None
+        )
+        result.append(response)
     
-    return redemptions
+    return result

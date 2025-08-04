@@ -12,6 +12,7 @@ export interface Task {
   description?: string;
   credits: number;
   task_type: 'individual' | 'collective';
+  periodicity: 'daily' | 'weekly' | 'special';
   is_active: boolean;
   created_at: string;
 }

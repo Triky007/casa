@@ -1,8 +1,8 @@
 import React from 'react';
 import { Task, TaskAssignment } from '../types';
 // Reemplazando iconos de Lucide con iconos infantiles de react-icons
-import { FaBaby, FaChild, FaUsers } from 'react-icons/fa';
-import { GiTrophyCup, GiSandsOfTime } from 'react-icons/gi';
+import { FaChild, FaUsers } from 'react-icons/fa';
+import { GiSandsOfTime } from 'react-icons/gi';
 import { RiMoneyDollarCircleFill } from 'react-icons/ri';
 import { MdDoneOutline, MdCancel } from 'react-icons/md';
 
@@ -97,6 +97,15 @@ const TaskCard: React.FC<TaskCardProps> = ({
             >
               Asignarme
             </button>
+          )}
+          
+          {/* Para tareas individuales, mostrar botón de asignar incluso si ya está asignada a otro usuario */}
+          {assignment && task.task_type === 'individual' && !isAdmin && 
+           assignment.user_id !== undefined && assignment.user_id !== null && 
+           !onAssign && (
+            <div className="flex-1 text-center py-2 px-4 text-sm text-gray-500">
+              Asignada a otro usuario
+            </div>
           )}
           
           {assignment?.status === 'pending' && onComplete && (

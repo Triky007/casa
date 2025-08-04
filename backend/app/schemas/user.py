@@ -11,6 +11,11 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class UserStats(BaseModel):
     total_tasks_completed: int
     total_credits_earned: int
