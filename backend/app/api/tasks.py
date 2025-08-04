@@ -1,0 +1,283 @@
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlmodel import Session, select
+from datetime import datetime
+from ..core.database import get_session
+from ..models.user import User, UserRole
+from ..models.task import Task, TaskAssignment, TaskStatus
+from ..schemas.task import TaskCreate, TaskResponse, TaskAssignmentResponse, TaskAssignmentUpdate
+from .auth import get_current_user
+
+router = APIRouter(prefix="/api/tasks", tags=["tasks"])
+
+
+@router.get("/", response_model=List[TaskResponse])
+async def get_tasks(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    statement = select(Task).where(Task.is_active == True)
+    tasks = session.exec(statement).all()
+    return tasks
+
+
+@router.post("/", response_model=TaskResponse)
+async def create_task(
+    task_data: TaskCreate, 
+    session: Session = Depends(get_session), 
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can create tasks"
+        )
+    
+    task = Task(**task_data.dict())
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+
+@router.post("/assign/{task_id}", response_model=TaskAssignmentResponse)
+async def assign_task(
+    task_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    # Check if user is admin (admins cannot assign tasks to themselves)
+    if current_user.role == UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrators cannot assign tasks to themselves"
+        )
+    
+    # Check if task exists
+    task = session.get(Task, task_id)
+    if not task or not task.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # Check if user already has this task assigned and pending/completed
+    statement = select(TaskAssignment).where(
+        TaskAssignment.task_id == task_id,
+        TaskAssignment.user_id == current_user.id,
+        TaskAssignment.status.in_([TaskStatus.PENDING, TaskStatus.COMPLETED])
+    )
+    existing_assignment = session.exec(statement).first()
+    if existing_assignment:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Task already assigned to user"
+        )
+    
+    assignment = TaskAssignment(task_id=task_id, user_id=current_user.id)
+    session.add(assignment)
+    session.commit()
+    session.refresh(assignment)
+    return assignment
+
+
+@router.get("/assignments", response_model=List[TaskAssignmentResponse])
+async def get_user_assignments(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    statement = select(TaskAssignment).where(TaskAssignment.user_id == current_user.id)
+    assignments = session.exec(statement).all()
+    
+    # Create response objects with task data
+    response_assignments = []
+    for assignment in assignments:
+        task = session.get(Task, assignment.task_id)
+        assignment_dict = assignment.dict()
+        assignment_dict['task'] = task.dict() if task else None
+        response_assignments.append(TaskAssignmentResponse(**assignment_dict))
+    
+    return response_assignments
+
+
+@router.get("/assignments/all", response_model=List[TaskAssignmentResponse])
+async def get_all_assignments(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all task assignments - only for administrators"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can view all assignments"
+        )
+    
+    statement = select(TaskAssignment)
+    assignments = session.exec(statement).all()
+    
+    # Create response objects with task and user data
+    response_assignments = []
+    for assignment in assignments:
+        task = session.get(Task, assignment.task_id)
+        user = session.get(User, assignment.user_id)
+        assignment_dict = assignment.dict()
+        assignment_dict['task'] = task.dict() if task else None
+        assignment_dict['user'] = {
+            'id': user.id,
+            'username': user.username
+        } if user else None
+        response_assignments.append(TaskAssignmentResponse(**assignment_dict))
+    
+    return response_assignments
+
+
+@router.patch("/complete/{assignment_id}", response_model=TaskAssignmentResponse)
+async def complete_task(
+    assignment_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    assignment = session.get(TaskAssignment, assignment_id)
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found"
+        )
+    
+    if assignment.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Can only complete your own tasks"
+        )
+    
+    if assignment.status != TaskStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Task is not in pending status"
+        )
+    
+    assignment.status = TaskStatus.COMPLETED
+    assignment.completed_at = datetime.utcnow()
+    session.add(assignment)
+    session.commit()
+    session.refresh(assignment)
+    return assignment
+
+
+@router.patch("/approve/{assignment_id}", response_model=TaskAssignmentResponse)
+async def approve_task(
+    assignment_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can approve tasks"
+        )
+    
+    assignment = session.get(TaskAssignment, assignment_id)
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found"
+        )
+    
+    if assignment.status != TaskStatus.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Task must be completed before approval"
+        )
+    
+    # Get task to award credits
+    task = session.get(Task, assignment.task_id)
+    user = session.get(User, assignment.user_id)
+    
+    assignment.status = TaskStatus.APPROVED
+    assignment.approved_at = datetime.utcnow()
+    assignment.approved_by = current_user.id
+    
+    # Award credits to user
+    user.credits += task.credits
+    
+    session.add(assignment)
+    session.add(user)
+    session.commit()
+    session.refresh(assignment)
+    return assignment
+
+
+@router.patch("/reject/{assignment_id}", response_model=TaskAssignmentResponse)
+async def reject_task(
+    assignment_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can reject tasks"
+        )
+    
+    assignment = session.get(TaskAssignment, assignment_id)
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found"
+        )
+    
+    if assignment.status != TaskStatus.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Task must be completed before rejection"
+        )
+    
+    assignment.status = TaskStatus.REJECTED
+    assignment.approved_by = current_user.id
+    
+    session.add(assignment)
+    session.commit()
+    session.refresh(assignment)
+    return assignment
+
+
+@router.get("/pending-approvals", response_model=List[TaskAssignmentResponse])
+async def get_pending_approvals(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can view pending approvals"
+        )
+    
+    statement = select(TaskAssignment).where(TaskAssignment.status == TaskStatus.COMPLETED)
+    assignments = session.exec(statement).all()
+    
+    # Load task data for each assignment
+    for assignment in assignments:
+        assignment.task = session.get(Task, assignment.task_id)
+    
+    return assignments
+
+
+@router.post("/reset-all")
+async def reset_all_tasks(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Reset all task assignments - only for administrators"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can reset tasks"
+        )
+    
+    # Delete all task assignments to make tasks available again
+    statement = select(TaskAssignment)
+    assignments = session.exec(statement).all()
+    
+    for assignment in assignments:
+        session.delete(assignment)
+    
+    session.commit()
+    
+    return {"message": f"Successfully reset {len(assignments)} task assignments"}
