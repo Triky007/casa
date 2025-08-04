@@ -4,9 +4,10 @@ from sqlmodel import Session, select, func
 from ..core.database import get_session
 from ..models.user import User, UserRole
 from ..models.task import TaskAssignment, TaskStatus
-from ..schemas.auth import UserResponse
+from ..schemas.auth import UserResponse, UserCreate
 from ..schemas.user import UserUpdate, UserStats
 from .auth import get_current_user
+from ..core.security import get_password_hash
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -114,6 +115,114 @@ async def get_all_users(
             detail="Only administrators can view all users"
         )
     
-    statement = select(User).where(User.is_active == True)
+    # Mostrar todos los usuarios, incluso inactivos, para que el admin pueda gestionarlos
+    statement = select(User)
     users = session.exec(statement).all()
     return users
+
+
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    user_create: UserCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can create users"
+        )
+    
+    # Check if username already exists
+    existing_user = session.exec(select(User).where(User.username == user_create.username)).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists"
+        )
+    
+    # Create new user
+    password_hash = get_password_hash(user_create.password)
+    
+    new_user = User(
+        username=user_create.username,
+        password_hash=password_hash,
+        role=user_create.role,
+        credits=user_create.credits if user_create.credits is not None else 0,
+        is_active=True
+    )
+    
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+    return new_user
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: int,
+    user_update: UserUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can update users"
+        )
+    
+    # Get user to update
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Update user fields
+    update_data = user_update.dict(exclude_unset=True)
+    
+    # Hash password if provided
+    if "password" in update_data:
+        update_data["password_hash"] = get_password_hash(update_data.pop("password"))
+    
+    for field, value in update_data.items():
+        setattr(user, field, value)
+    
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can delete users"
+        )
+    
+    # Prevent self-deletion
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+    
+    # Get user to delete
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Delete user
+    session.delete(user)
+    session.commit()
+    return None

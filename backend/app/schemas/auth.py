@@ -21,6 +21,7 @@ class UserCreate(BaseModel):
     username: str
     password: str
     role: UserRole = UserRole.USER
+    credits: Optional[int] = 0
 
 
 class UserResponse(BaseModel):

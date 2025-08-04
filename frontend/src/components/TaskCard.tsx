@@ -1,6 +1,10 @@
 import React from 'react';
 import { Task, TaskAssignment } from '../types';
-import { Clock, CheckCircle, XCircle, Coins, Users, User } from 'lucide-react';
+// Reemplazando iconos de Lucide con iconos infantiles de react-icons
+import { FaBaby, FaChild, FaUsers } from 'react-icons/fa';
+import { GiTrophyCup, GiSandsOfTime } from 'react-icons/gi';
+import { RiMoneyDollarCircleFill } from 'react-icons/ri';
+import { MdDoneOutline, MdCancel } from 'react-icons/md';
 
 interface TaskCardProps {
   task: Task;
@@ -64,15 +68,15 @@ const TaskCard: React.FC<TaskCardProps> = ({
           
           <div className="flex items-center space-x-3 text-sm">
             <div className="flex items-center space-x-1">
-              <Coins className="w-4 h-4 text-yellow-600" />
+              <RiMoneyDollarCircleFill className="w-5 h-5 text-yellow-600" />
               <span className="font-medium text-yellow-700">{task.credits} créditos</span>
             </div>
             
             <div className="flex items-center space-x-1">
               {task.task_type === 'collective' ? (
-                <Users className="w-4 h-4 text-blue-600" />
+                <FaUsers className="w-5 h-5 text-blue-600" />
               ) : (
-                <User className="w-4 h-4 text-green-600" />
+                <FaChild className="w-5 h-5 text-green-600" />
               )}
               <span className="text-gray-600 capitalize">{task.task_type}</span>
             </div>
@@ -100,7 +104,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
               onClick={() => onComplete(assignment.id)}
               className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-1"
             >
-              <CheckCircle className="w-4 h-4" />
+              <MdDoneOutline className="w-5 h-5" />
               <span>Completar</span>
             </button>
           )}
@@ -111,14 +115,14 @@ const TaskCard: React.FC<TaskCardProps> = ({
                 onClick={() => onApprove(assignment.id)}
                 className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-1"
               >
-                <CheckCircle className="w-4 h-4" />
+                <MdDoneOutline className="w-5 h-5" />
                 <span>Aprobar</span>
               </button>
               <button
                 onClick={() => onReject(assignment.id)}
                 className="flex-1 bg-red-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center space-x-1"
               >
-                <XCircle className="w-4 h-4" />
+                <MdCancel className="w-5 h-5" />
                 <span>Rechazar</span>
               </button>
             </>
@@ -129,7 +133,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       {assignment?.completed_at && (
         <div className="mt-3 pt-3 border-t border-gray-100">
           <div className="flex items-center space-x-1 text-xs text-gray-500">
-            <Clock className="w-3 h-3" />
+            <GiSandsOfTime className="w-4 h-4 text-purple-500" />
             <span>
               Completada: {new Date(assignment.completed_at).toLocaleDateString('es-ES')}
             </span>

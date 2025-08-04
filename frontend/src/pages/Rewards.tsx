@@ -3,7 +3,10 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Reward, RewardRedemption } from '../types';
 import api from '../utils/api';
-import { Gift, Coins, ShoppingCart, CheckCircle, Clock } from 'lucide-react';
+// Reemplazando iconos de Lucide con iconos infantiles de react-icons
+import { GiPresent, GiSandsOfTime } from 'react-icons/gi';
+import { RiMoneyDollarCircleFill, RiShoppingCart2Fill } from 'react-icons/ri';
+import { MdDoneOutline } from 'react-icons/md';
 
 const Rewards: React.FC = () => {
   const { user } = useAuth();
@@ -96,7 +99,7 @@ const Rewards: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Recompensas</h1>
         <div className="flex items-center space-x-2 bg-yellow-100 px-3 py-2 rounded-lg">
-          <Coins className="w-5 h-5 text-yellow-600" />
+          <RiMoneyDollarCircleFill className="w-6 h-6 text-yellow-600" />
           <span className="font-semibold text-yellow-700">{user?.credits || 0}</span>
         </div>
       </div>
@@ -104,8 +107,8 @@ const Rewards: React.FC = () => {
       {/* Tabs */}
       <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
         {[
-          { key: 'available', label: 'Disponibles', icon: Gift },
-          { key: 'history', label: 'Historial', icon: Clock }
+          { key: 'available', label: 'Disponibles', icon: GiPresent },
+          { key: 'history', label: 'Historial', icon: GiSandsOfTime }
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -135,7 +138,7 @@ const Rewards: React.FC = () => {
                       <p className="text-sm text-gray-600 mb-2">{reward.description}</p>
                     )}
                     <div className="flex items-center space-x-1">
-                      <Coins className="w-4 h-4 text-yellow-600" />
+                      <RiMoneyDollarCircleFill className="w-5 h-5 text-yellow-600" />
                       <span className="font-medium text-yellow-700">{reward.cost} créditos</span>
                     </div>
                   </div>
@@ -150,7 +153,7 @@ const Rewards: React.FC = () => {
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  <ShoppingCart className="w-4 h-4" />
+                  <RiShoppingCart2Fill className="w-5 h-5" />
                   <span>
                     {user && user.credits >= reward.cost ? 'Canjear' : 'Créditos insuficientes'}
                   </span>
@@ -160,7 +163,7 @@ const Rewards: React.FC = () => {
           ) : (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Gift className="w-8 h-8 text-gray-400" />
+                <GiPresent className="w-10 h-10 text-gray-400" />
               </div>
               <p className="text-gray-500 mb-2">No hay recompensas disponibles</p>
               <p className="text-sm text-gray-400">
@@ -186,14 +189,14 @@ const Rewards: React.FC = () => {
                       Canjeado el {formatDate(redemption.redeemed_at)}
                     </p>
                     <div className="flex items-center space-x-1">
-                      <Coins className="w-4 h-4 text-yellow-600" />
+                      <RiMoneyDollarCircleFill className="w-5 h-5 text-yellow-600" />
                       <span className="font-medium text-yellow-700">
                         {redemption.reward?.cost || 0} créditos
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-1 text-green-600">
-                    <CheckCircle className="w-5 h-5" />
+                    <MdDoneOutline className="w-6 h-6" />
                     <span className="text-sm font-medium">Canjeado</span>
                   </div>
                 </div>
@@ -202,7 +205,7 @@ const Rewards: React.FC = () => {
           ) : (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-8 h-8 text-gray-400" />
+                <GiSandsOfTime className="w-10 h-10 text-gray-400" />
               </div>
               <p className="text-gray-500 mb-2">No tienes historial de canjes</p>
               <p className="text-sm text-gray-400">

@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Task, TaskAssignment } from '../types';
 import TaskCard from '../components/TaskCard';
 import api from '../utils/api';
-import { Plus, Filter, Search, RotateCcw } from 'lucide-react';
+// Reemplazando iconos de Lucide con iconos infantiles de react-icons
+import { GiSandsOfTime } from 'react-icons/gi';
+import { FaPlus, FaSearch, FaFilter } from 'react-icons/fa';
+import { MdOutlineRestartAlt } from 'react-icons/md';
 
 const Tasks: React.FC = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'available' | 'assigned'>('all');
+  
+  // Añadir opción de histórico
+  const urlParams = new URLSearchParams(location.search);
+  const initialTab = urlParams.get('tab') === 'history' ? 'history' : 'all';
+  const [filter, setFilter] = useState<'all' | 'available' | 'assigned' | 'history'>(initialTab as any);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -146,7 +155,9 @@ const Tasks: React.FC = () => {
       case 'available':
         return !assignment;
       case 'assigned':
-        return !!assignment;
+        return !!assignment && assignment.status !== 'approved' && assignment.status !== 'rejected';
+      case 'history':
+        return !!assignment && (assignment.status === 'approved' || assignment.status === 'rejected');
       default:
         return true;
     }
@@ -178,10 +189,10 @@ const Tasks: React.FC = () => {
               className="bg-orange-600 text-white p-2 rounded-lg hover:bg-orange-700 transition-colors"
               title="Resetear todas las tareas"
             >
-              <RotateCcw className="w-5 h-5" />
+              <MdOutlineRestartAlt className="w-5 h-5" />
             </button>
             <button className="bg-primary-600 text-white p-2 rounded-lg hover:bg-primary-700 transition-colors">
-              <Plus className="w-5 h-5" />
+              <FaPlus className="w-5 h-5" />
             </button>
           </div>
         )}
@@ -190,7 +201,7 @@ const Tasks: React.FC = () => {
       {/* Search */}
       <div className="relative mb-4">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-5 w-5 text-gray-400" />
+          <FaSearch className="h-4 w-4 text-gray-400" />
         </div>
         <input
           type="text"
@@ -203,23 +214,27 @@ const Tasks: React.FC = () => {
 
       {/* Filter Tabs */}
       <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
-        {[
-          { key: 'all', label: 'Todas' },
-          { key: 'available', label: 'Disponibles' },
-          { key: 'assigned', label: 'Asignadas' }
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key as any)}
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              filter === key
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+        {
+          [
+            { key: 'all', label: 'Todas' },
+            { key: 'available', label: 'Disponibles' },
+            { key: 'assigned', label: 'Asignadas' },
+            { key: 'history', label: 'Histórico', icon: GiSandsOfTime }
+          ].map(({ key, label, icon }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key as any)}
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center space-x-1 ${
+                filter === key
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {key === 'history' && icon && React.createElement(icon, { className: "w-4 h-4" })}
+              <span>{label}</span>
+            </button>
+          ))
+        }
       </div>
 
       {/* Tasks List */}
@@ -243,7 +258,7 @@ const Tasks: React.FC = () => {
         ) : (
           <div className="text-center py-8">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Filter className="w-8 h-8 text-gray-400" />
+              <FaFilter className="w-8 h-8 text-gray-400" />
             </div>
             <p className="text-gray-500 mb-2">No se encontraron tareas</p>
             <p className="text-sm text-gray-400">
