@@ -4,10 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { Task, TaskAssignment } from '../types';
 import TaskCard from '../components/TaskCard';
 import api from '../utils/api';
-// Reemplazando iconos de Lucide con iconos infantiles de react-icons
+import { FaSearch, FaFilter, FaPlus } from 'react-icons/fa';
+import { MdOutlineRestartAlt, MdDoneOutline } from 'react-icons/md';
 import { GiSandsOfTime } from 'react-icons/gi';
-import { FaPlus, FaSearch, FaFilter } from 'react-icons/fa';
-import { MdOutlineRestartAlt } from 'react-icons/md';
 
 const Tasks: React.FC = () => {
   const { user } = useAuth();
@@ -15,12 +14,14 @@ const Tasks: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Añadir opción de histórico
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<'all' | 'available' | 'assigned' | 'history' | 'completed'>('all');
+
   const urlParams = new URLSearchParams(location.search);
   const initialTab = urlParams.get('tab') === 'history' ? 'history' : 'all';
-  const [filter, setFilter] = useState<'all' | 'available' | 'assigned' | 'history'>(initialTab as any);
-  const [searchTerm, setSearchTerm] = useState('');
+  useEffect(() => {
+    setFilter(initialTab as 'all' | 'available' | 'assigned' | 'history' | 'completed');
+  }, [initialTab]);
 
   useEffect(() => {
     fetchData();
@@ -138,33 +139,46 @@ const Tasks: React.FC = () => {
   };
 
   const getTaskAssignment = (taskId: number): TaskAssignment | undefined => {
-    // Buscar asignaciones para la tarea específica
-    const taskAssignments = assignments.filter(assignment => 
-      assignment.task_id === taskId && 
-      assignment.status !== 'rejected'
-    );
-    
-    if (taskAssignments.length === 0) {
+    // Para usuarios normales, buscar solo sus asignaciones
+    if (user?.role !== 'admin') {
+      // Buscar asignaciones para la tarea específica que pertenecen al usuario actual
+      const userAssignments = assignments.filter(assignment => 
+        assignment.task_id === taskId && 
+        assignment.user_id === user?.id &&
+        assignment.status !== 'rejected'
+      );
+      
+      return userAssignments.length > 0 ? userAssignments[0] : undefined;
+    } else {
+      // Para administradores en la vista normal (no completadas), mostrar cualquier asignación
+      // Esto es para mantener la visualización de tareas disponibles/asignadas
+      if (filter !== 'completed') {
+        const taskAssignments = assignments.filter(assignment => 
+          assignment.task_id === taskId && 
+          assignment.status !== 'rejected'
+        );
+        
+        return taskAssignments.length > 0 ? taskAssignments[0] : undefined;
+      }
+      
+      // Para administradores en la vista de completadas, no devolver nada aquí
+      // ya que mostraremos todas las asignaciones completadas por separado
       return undefined;
     }
-    
-    // Buscar primero si el usuario actual tiene una asignación para esta tarea
-    const userAssignment = taskAssignments.find(assignment => assignment.user_id === user?.id);
-    if (userAssignment) {
-      return userAssignment;
-    }
-    
-    // Si el usuario actual no tiene una asignación, devolver la primera asignación encontrada
-    // (esto es relevante para tareas colectivas que ya están asignadas a otro usuario)
-    return taskAssignments[0];
   };
 
+  // Filtrar tareas normales (disponibles, asignadas, históricas)
   const filteredTasks = tasks.filter(task => {
     const assignment = getTaskAssignment(task.id);
     const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (!matchesSearch) return false;
+
+    // Para administradores en vista de completadas, no mostrar tareas normales
+    if (user?.role === 'admin' && filter === 'completed') {
+      return false;
+    }
 
     switch (filter) {
       case 'available':
@@ -173,10 +187,32 @@ const Tasks: React.FC = () => {
         return !!assignment && assignment.status !== 'approved' && assignment.status !== 'rejected';
       case 'history':
         return !!assignment && (assignment.status === 'approved' || assignment.status === 'rejected');
+      case 'completed':
+        return false; // Las tareas completadas se manejan por separado
       default:
         return true;
     }
   });
+
+  // Filtrar asignaciones completadas pendientes de aprobación (solo para administradores)
+  const completedAssignments = user?.role === 'admin' && filter === 'completed' 
+    ? assignments.filter(assignment => 
+        assignment.status === 'completed' &&
+        (searchTerm === '' || 
+         (assignment.task?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assignment.task?.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assignment.user?.username?.toLowerCase().includes(searchTerm.toLowerCase()))))
+    : [];
+    
+  // Filtrar asignaciones históricas (aprobadas o rechazadas) para mostrarlas por usuario
+  const historicalAssignments = filter === 'history'
+    ? assignments.filter(assignment => 
+        (assignment.status === 'approved' || assignment.status === 'rejected') &&
+        (searchTerm === '' || 
+         (assignment.task?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assignment.task?.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assignment.user?.username?.toLowerCase().includes(searchTerm.toLowerCase()))))
+    : [];
 
   if (isLoading) {
     return (
@@ -234,7 +270,9 @@ const Tasks: React.FC = () => {
             { key: 'all', label: 'Todas' },
             { key: 'available', label: 'Disponibles' },
             { key: 'assigned', label: 'Asignadas' },
-            { key: 'history', label: 'Histórico', icon: GiSandsOfTime }
+            { key: 'history', label: 'Histórico', icon: GiSandsOfTime },
+            // Pestaña adicional para administradores: Completadas pendientes de aprobación
+            ...(user?.role === 'admin' ? [{ key: 'completed', label: 'Por Aprobar', icon: MdDoneOutline }] : [])
           ].map(({ key, label, icon }) => (
             <button
               key={key}
@@ -245,7 +283,7 @@ const Tasks: React.FC = () => {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              {key === 'history' && icon && React.createElement(icon, { className: "w-4 h-4" })}
+              {icon && React.createElement(icon, { className: "w-4 h-4 mr-1" })}
               <span>{label}</span>
             </button>
           ))
@@ -254,7 +292,8 @@ const Tasks: React.FC = () => {
 
       {/* Tasks List */}
       <div className="space-y-3">
-        {filteredTasks.length > 0 ? (
+        {/* Vista normal de tareas (no histórico ni completadas) */}
+        {filter !== 'completed' && filter !== 'history' && filteredTasks.length > 0 ? (
           filteredTasks.map(task => {
             const assignment = getTaskAssignment(task.id);
             return (
@@ -270,6 +309,31 @@ const Tasks: React.FC = () => {
               />
             );
           })
+        ) : filter === 'completed' && completedAssignments.length > 0 ? (
+          // Vista de asignaciones completadas para administradores
+          completedAssignments.map(assignment => (
+            <TaskCard
+              key={`assignment-${assignment.id}`}
+              task={assignment.task!}
+              assignment={assignment}
+              onApprove={handleApproveTask}
+              onReject={handleRejectTask}
+              isAdmin={true}
+              showUserInfo={true}
+            />
+          ))
+        ) : filter === 'history' && historicalAssignments.length > 0 ? (
+          // Vista de histórico de asignaciones por usuario
+          historicalAssignments.map(assignment => (
+            <TaskCard
+              key={`history-${assignment.id}`}
+              task={assignment.task!}
+              assignment={assignment}
+              isAdmin={user?.role === 'admin'}
+              showUserInfo={user?.role === 'admin'} // Mostrar usuario solo para admins
+              showActions={false} // No mostrar acciones en histórico
+            />
+          ))
         ) : (
           <div className="text-center py-8">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -281,6 +345,10 @@ const Tasks: React.FC = () => {
                 ? 'No hay tareas disponibles en este momento'
                 : filter === 'assigned'
                 ? 'No tienes tareas asignadas'
+                : filter === 'completed'
+                ? 'No hay tareas completadas pendientes de aprobación'
+                : filter === 'history'
+                ? 'No hay tareas en el histórico'
                 : 'Intenta cambiar los filtros de búsqueda'
               }
             </p>

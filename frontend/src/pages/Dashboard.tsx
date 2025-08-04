@@ -50,13 +50,13 @@ const Dashboard: React.FC = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'PENDING':
         return <Clock className="w-4 h-4 text-yellow-600" />;
-      case 'completed':
+      case 'COMPLETED':
         return <Clock className="w-4 h-4 text-blue-600" />;
-      case 'approved':
+      case 'APPROVED':
         return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'rejected':
+      case 'REJECTED':
         return <XCircle className="w-4 h-4 text-red-600" />;
       default:
         return null;

@@ -15,6 +15,7 @@ interface TaskCardProps {
   onReject?: (assignmentId: number) => void;
   showActions?: boolean;
   isAdmin?: boolean;
+  showUserInfo?: boolean;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({
@@ -26,6 +27,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onReject,
   showActions = true,
   isAdmin = false,
+  showUserInfo = false,
 }) => {
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -141,6 +143,18 @@ const TaskCard: React.FC<TaskCardProps> = ({
       
       {assignment?.completed_at && (
         <div className="mt-3 pt-3 border-t border-gray-100">
+          {/* Mostrar información del usuario que completó la tarea si showUserInfo es true */}
+          {showUserInfo && assignment.user && (
+            <div className="bg-blue-50 p-2 rounded-md mb-2 border border-blue-100">
+              <div className="flex items-center space-x-2 text-sm">
+                <FaChild className="w-5 h-5 text-blue-500" />
+                <span className="font-medium text-blue-700">
+                  Completada por: <span className="text-blue-900 font-bold">{assignment.user.username}</span>
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center space-x-1 text-xs text-gray-500">
             <GiSandsOfTime className="w-4 h-4 text-purple-500" />
             <span>

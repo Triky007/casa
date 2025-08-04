@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
 import { Task } from '../../types';
 import api from '../../utils/api';
-import { FaTasks, FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaTasks, FaPlus, FaEdit, FaTrash, FaUser } from 'react-icons/fa';
 import { MdClose } from 'react-icons/md';
 import { GiPartyPopper } from 'react-icons/gi';
 import { BsPeopleFill, BsPersonFill } from 'react-icons/bs';
 
+interface ExtendedTask extends Task {
+  category?: string;
+  user?: {
+    id: number;
+    username: string;
+  };
+  assignee?: string;
+}
+
 interface TaskManagementProps {
-  tasks: Task[];
+  tasks: ExtendedTask[];
   onTaskChange: () => void;
 }
 
 const TaskManagement: React.FC<TaskManagementProps> = ({ tasks, onTaskChange }) => {
   const [showAddTask, setShowAddTask] = useState(false);
   const [showEditTask, setShowEditTask] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<ExtendedTask | null>(null);
   
   const [newTask, setNewTask] = useState({
     name: '',
@@ -106,6 +115,17 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ tasks, onTaskChange }) 
                   <p className="font-medium text-gray-900">{task.name}</p>
                 </div>
                 <p className="text-sm text-gray-600 line-clamp-1">{task.description}</p>
+                
+                {/* Mostrar información de tarea */}
+                <div className="flex items-center mt-1 mb-1">
+                  <div className="flex-shrink-0 h-5 w-5 bg-blue-100 rounded-full flex items-center justify-center mr-1">
+                    <FaUser className="text-blue-500 w-3 h-3" />
+                  </div>
+                  <span className="text-xs font-medium text-blue-700">
+                    {task.user ? task.user.username : task.assignee || 'Sin asignar'}
+                  </span>
+                </div>
+                
                 <div className="flex items-center mt-1 space-x-2">
                   {task.task_type === 'individual' ? (
                     <BsPersonFill className="w-3 h-3 text-blue-500 mr-1" />
