@@ -7,8 +7,8 @@ from ..core.security import verify_password, get_password_hash, create_access_to
 from ..models.user import User
 from ..schemas.auth import Token, UserLogin, UserCreate, UserResponse
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+router = APIRouter(prefix="/api/user", tags=["user"])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/validate")
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
@@ -32,7 +32,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: Session
     return user
 
 
-@router.post("/access", response_model=Token)
+@router.post("/validate", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
     statement = select(User).where(User.username == form_data.username)
     user = session.exec(statement).first()

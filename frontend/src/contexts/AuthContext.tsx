@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
       // Verify token is still valid
-      api.get('/api/auth/me')
+      api.get('/api/user/me')
         .then(response => {
           setUser(response.data);
           localStorage.setItem('user', JSON.stringify(response.data));
@@ -51,14 +51,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await api.post('/api/auth/access', formData);
+      const response = await api.post('/api/user/validate', formData);
       const { access_token } = response.data;
 
       setToken(access_token);
       localStorage.setItem('token', access_token);
 
       // Get user info
-      const userResponse = await api.get('/api/auth/me');
+      const userResponse = await api.get('/api/user/me');
       setUser(userResponse.data);
       localStorage.setItem('user', JSON.stringify(userResponse.data));
     } catch (error) {
