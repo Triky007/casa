@@ -63,7 +63,7 @@ const TaskApprovals: React.FC = () => {
           user_id: assignment.user_id,
           username: user ? user.username : 'Usuario desconocido',
           submission_date: assignment.completed_at || new Date().toISOString(),
-          status: (assignment.status || '').toLowerCase(),
+          status: assignment.status,
           evidence: assignment.evidence || '',
           comments: assignment.comments || '',
           category: task ? task.category || 'Sin categoría' : 'Sin categoría',
@@ -85,16 +85,16 @@ const TaskApprovals: React.FC = () => {
     try {
       // Use the correct endpoint to approve the task
       await api.patch(`/api/tasks/approve/${submissionId}`);
-      
+
       // Actualizamos el estado local después de la aprobación exitosa
-      setSubmissions(prevSubmissions => 
-        prevSubmissions.map(sub => 
-          sub.id === submissionId 
+      setSubmissions(prevSubmissions =>
+        prevSubmissions.map(sub =>
+          sub.id === submissionId
             ? {...sub, status: 'approved'}
             : sub
         )
       );
-      
+
       // También actualizamos las submissions filtradas
       setFilteredSubmissions(prevFiltered =>
         prevFiltered.map(sub =>
@@ -103,12 +103,6 @@ const TaskApprovals: React.FC = () => {
             : sub
         )
       );
-
-      // Cerrar cualquier modal abierto (detalle o rechazo) tras aprobar
-      setSelectedSubmission(null);
-      setShowRejectModal(false);
-
-      alert('Tarea aprobada con éxito');
     } catch (err) {
       console.error('Error approving task:', err);
       alert('Error al aprobar la tarea');
@@ -123,36 +117,34 @@ const TaskApprovals: React.FC = () => {
 
   const handleReject = async () => {
     if (!selectedSubmission) return;
-    
+
     try {
       // Use the correct endpoint to reject the task
       await api.patch(`/api/tasks/reject/${selectedSubmission.id}`, {
         comments: rejectReason
       });
-      
+
       // Actualizamos el estado local después del rechazo exitoso
-      setSubmissions(prevSubmissions => 
-        prevSubmissions.map(sub => 
-          sub.id === selectedSubmission.id 
+      setSubmissions(prevSubmissions =>
+        prevSubmissions.map(sub =>
+          sub.id === selectedSubmission.id
             ? {...sub, status: 'rejected', comments: `${sub.comments} | Rechazado: ${rejectReason}`}
             : sub
         )
       );
-      
+
       // También actualizamos las submissions filtradas
-      setFilteredSubmissions(prevFiltered => 
-        prevFiltered.map(sub => 
-          sub.id === selectedSubmission.id 
+      setFilteredSubmissions(prevFiltered =>
+        prevFiltered.map(sub =>
+          sub.id === selectedSubmission.id
             ? {...sub, status: 'rejected', comments: `${sub.comments} | Rechazado: ${rejectReason}`}
             : sub
         )
       );
-      
+
       // Cerrar modal
       setShowRejectModal(false);
       setSelectedSubmission(null);
-      
-      alert('Tarea rechazada con éxito');
     } catch (err) {
       console.error('Error rejecting task:', err);
       alert('Error al rechazar la tarea');
@@ -237,7 +229,7 @@ const TaskApprovals: React.FC = () => {
               const date = new Date(s.submission_date);
               const sevenDaysAgo = new Date();
               sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-              return s.status === 'APPROVED' && date >= sevenDaysAgo;
+              return s.status === 'approved' && date >= sevenDaysAgo;
             }).length}
           </p>
         </div>
@@ -248,7 +240,7 @@ const TaskApprovals: React.FC = () => {
               const date = new Date(s.submission_date);
               const sevenDaysAgo = new Date();
               sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-              return s.status === 'REJECTED' && date >= sevenDaysAgo;
+              return s.status === 'rejected' && date >= sevenDaysAgo;
             }).length}
           </p>
         </div>
