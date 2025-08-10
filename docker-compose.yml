@@ -1,35 +1,17 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: family_tasks
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d family_tasks"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql://user:password@db:5432/family_tasks
+      DATABASE_URL: sqlite:///./family_tasks.db
       SECRET_KEY: your-secret-key-change-in-production
       ALLOWED_ORIGINS: http://localhost:4100,http://localhost:5173,http://localhost
     ports:
       - "3100:3100"
-    depends_on:
-      db:
-        condition: service_healthy
     volumes:
       - ./backend:/app
+      - sqlite_data:/app/data
     command: uvicorn app.main:app --host 0.0.0.0 --port 3100 --reload
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3100/docs"]
@@ -47,4 +29,4 @@ services:
       VITE_API_URL: http://localhost:3100
 
 volumes:
-  postgres_data:
+  sqlite_data:
