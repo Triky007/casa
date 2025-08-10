@@ -5,28 +5,30 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: sqlite:///./family_tasks.db
-      SECRET_KEY: your-secret-key-change-in-production
-      ALLOWED_ORIGINS: http://localhost:4100,http://localhost:5173,http://localhost
+      SECRET_KEY: your-secret-key-change-in-production-please
+      ALLOWED_ORIGINS: https://family.triky.app,https://api.family.triky.app
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     volumes:
       - ./backend:/app
       - sqlite_data:/app/data
-    command: uvicorn app.main:app --host 0.0.0.0 --port 3100 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 3100
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3100/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
     ports:
-      - "4100:80"
+      - "127.0.0.1:4100:80"
     depends_on:
       - backend
     environment:
-      VITE_API_URL: http://localhost:3100
+      VITE_API_URL: https://api.family.triky.app
+    restart: unless-stopped
 
 volumes:
   sqlite_data:
