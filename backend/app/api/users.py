@@ -26,7 +26,7 @@ async def change_user_password(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para cambiar esta contraseña"
         )
-    
+
     # Obtener el usuario cuya contraseña se va a cambiar
     user = session.get(User, user_id)
     if not user:
@@ -34,7 +34,7 @@ async def change_user_password(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado"
         )
-    
+
     # Si es el propio usuario cambiando su contraseña, verificar la contraseña actual
     if current_user.id == user_id:
         if not verify_password(password_change.current_password, user.password_hash):
@@ -42,12 +42,12 @@ async def change_user_password(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="La contraseña actual es incorrecta"
             )
-    
+
     # Actualizar la contraseña
     user.password_hash = get_password_hash(password_change.new_password)
     session.add(user)
     session.commit()
-    
+
     return {"message": "Contraseña actualizada correctamente"}
 
 

@@ -9,7 +9,7 @@ interface TaskSubmission {
   user_id: number;
   username: string;
   submission_date: string;
-  status: 'PENDING' | 'COMPLETED' | 'APPROVED' | 'REJECTED';
+  status: 'pending' | 'completed' | 'approved' | 'rejected';
   evidence: string;
   comments: string;
   category: string;
@@ -63,7 +63,7 @@ const TaskApprovals: React.FC = () => {
           user_id: assignment.user_id,
           username: user ? user.username : 'Usuario desconocido',
           submission_date: assignment.completed_at || new Date().toISOString(),
-          status: assignment.status,
+          status: (assignment.status || '').toLowerCase(),
           evidence: assignment.evidence || '',
           comments: assignment.comments || '',
           category: task ? task.category || 'Sin categoría' : 'Sin categoría',
@@ -90,20 +90,24 @@ const TaskApprovals: React.FC = () => {
       setSubmissions(prevSubmissions => 
         prevSubmissions.map(sub => 
           sub.id === submissionId 
-            ? {...sub, status: 'APPROVED'} 
+            ? {...sub, status: 'approved'}
             : sub
         )
       );
       
       // También actualizamos las submissions filtradas
-      setFilteredSubmissions(prevFiltered => 
-        prevFiltered.map(sub => 
-          sub.id === submissionId 
-            ? {...sub, status: 'APPROVED'} 
+      setFilteredSubmissions(prevFiltered =>
+        prevFiltered.map(sub =>
+          sub.id === submissionId
+            ? {...sub, status: 'approved'}
             : sub
         )
       );
-      
+
+      // Cerrar cualquier modal abierto (detalle o rechazo) tras aprobar
+      setSelectedSubmission(null);
+      setShowRejectModal(false);
+
       alert('Tarea aprobada con éxito');
     } catch (err) {
       console.error('Error approving task:', err);
@@ -130,7 +134,7 @@ const TaskApprovals: React.FC = () => {
       setSubmissions(prevSubmissions => 
         prevSubmissions.map(sub => 
           sub.id === selectedSubmission.id 
-            ? {...sub, status: 'REJECTED', comments: `${sub.comments} | Rechazado: ${rejectReason}`} 
+            ? {...sub, status: 'rejected', comments: `${sub.comments} | Rechazado: ${rejectReason}`}
             : sub
         )
       );
@@ -139,7 +143,7 @@ const TaskApprovals: React.FC = () => {
       setFilteredSubmissions(prevFiltered => 
         prevFiltered.map(sub => 
           sub.id === selectedSubmission.id 
-            ? {...sub, status: 'REJECTED', comments: `${sub.comments} | Rechazado: ${rejectReason}`} 
+            ? {...sub, status: 'rejected', comments: `${sub.comments} | Rechazado: ${rejectReason}`}
             : sub
         )
       );
@@ -224,7 +228,7 @@ const TaskApprovals: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-yellow-500">
           <p className="text-sm text-gray-600">Pendientes de Aprobación</p>
-          <p className="text-2xl font-bold">{submissions.filter(s => s.status === 'COMPLETED').length}</p>
+          <p className="text-2xl font-bold">{submissions.filter(s => s.status === 'completed').length}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500">
           <p className="text-sm text-gray-600">Aprobadas (Últimos 7 días)</p>
@@ -308,16 +312,16 @@ const TaskApprovals: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${submission.status === 'PENDING' || submission.status === 'COMPLETED' ? 'bg-yellow-100 text-yellow-800' : 
-                          submission.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 
+                        ${submission.status === 'pending' || submission.status === 'completed' ? 'bg-yellow-100 text-yellow-800' :
+                          submission.status === 'approved' ? 'bg-green-100 text-green-800' :
                           'bg-red-100 text-red-800'}`}>
-                        {submission.status === 'PENDING' ? 'Pendiente' : 
-                          submission.status === 'COMPLETED' ? 'Completada' :
-                          submission.status === 'APPROVED' ? 'Aprobada' : 'Rechazada'}
+                        {submission.status === 'pending' ? 'Pendiente' :
+                          submission.status === 'completed' ? 'Completada' :
+                          submission.status === 'approved' ? 'Aprobada' : 'Rechazada'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {submission.status === 'COMPLETED' && (
+                      {submission.status === 'completed' && (
                         <div className="flex justify-end space-x-2">
                           <button
                             onClick={() => handleApprove(submission.id)}
@@ -448,7 +452,7 @@ const TaskApprovals: React.FC = () => {
                 </div>
               </div>
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                {selectedSubmission.status === 'COMPLETED' && (
+                {selectedSubmission.status === 'completed' && (
                   <div className="mt-4 flex justify-end">
                     <button
                       type="button"

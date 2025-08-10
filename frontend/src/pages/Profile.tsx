@@ -57,13 +57,13 @@ const Profile: React.FC = () => {
         current_password: currentPassword,
         new_password: newPassword
       });
-      
+
       // Limpiar los campos y cerrar el modal
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setShowPasswordModal(false);
-      
+
       alert('Contraseña actualizada correctamente');
     } catch (error: any) {
       console.error('Error changing password:', error);
