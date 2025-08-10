@@ -32,7 +32,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: Session
     return user
 
 
-@router.post("/login", response_model=Token)
+@router.post("/access", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
     statement = select(User).where(User.username == form_data.username)
     user = session.exec(statement).first()
