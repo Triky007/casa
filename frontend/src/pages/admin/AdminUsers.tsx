@@ -55,7 +55,7 @@ const AdminUsers: React.FC = () => {
     // Filtrar por estado
     if (filterStatus !== 'all') {
       result = result.filter(user => 
-        (filterStatus === 'active' ? user.active : !user.active)
+        (filterStatus === 'active' ? user.is_active : !user.is_active)
       );
     }
     
@@ -172,7 +172,7 @@ const AdminUsers: React.FC = () => {
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500">
           <p className="text-sm text-gray-600">Usuarios Activos</p>
-          <p className="text-2xl font-bold">{users.filter(user => user.active).length}</p>
+          <p className="text-2xl font-bold">{users.filter(user => user.is_active).length}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-purple-500">
           <p className="text-sm text-gray-600">Administradores</p>

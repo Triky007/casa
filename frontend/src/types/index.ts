@@ -22,6 +22,7 @@ export interface TaskAssignment {
   task_id: number;
   user_id: number;
   status: 'pending' | 'completed' | 'approved' | 'rejected';
+  scheduled_date: string; // YYYY-MM-DD
   completed_at?: string;
   approved_at?: string;
   approved_by?: number;

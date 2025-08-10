@@ -24,81 +24,39 @@ const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fromDate, setFromDate] = useState<string>(new Date().toISOString().slice(0,10));
+  const [toDate, setToDate] = useState<string>(new Date().toISOString().slice(0,10));
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [fromDate, toDate]);
 
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // Obtener datos de diferentes endpoints para el dashboard
-      // Solo usamos endpoints que sabemos que existen
-      const [usersResponse, tasksResponse, rewardsResponse] = await Promise.all([
+
+      const params = { from_date: fromDate, to_date: toDate } as any;
+      // Obtener datos base
+      const [usersResponse, rewardsResponse, statsResponse] = await Promise.all([
         api.get('/api/users/'),
-        api.get('/api/tasks/'),
-        api.get('/api/rewards/')
+        api.get('/api/rewards/'),
+        api.get('/api/tasks/stats/daily', { params })
       ]);
 
-      // Procesamos los datos para obtener estadísticas
       const users = usersResponse.data;
-      const tasks = tasksResponse.data;
       const rewards = rewardsResponse.data;
-      
-      // Generamos actividad reciente a partir de los datos de tareas
-      // Esto reemplaza la llamada al endpoint inexistente /api/activity/recent
-      let recentActivity: ActivityItem[] = [];
-      
-      // Filtramos tareas completadas recientemente para mostrarlas como actividad
-      const completedTasks = tasks
-        .filter((task: any) => task.status === 'COMPLETED')
-        .slice(0, 3);
-      
-      // Agregamos algunas actividades basadas en tareas completadas
-      completedTasks.forEach((task: any, index: number) => {
-        recentActivity.push({
-          id: `task-${task.id || index}`,
-          type: 'task_completed',
-          username: task.assigned_to?.username || 'Usuario',
-          description: `Completó la tarea "${task.name || 'Tarea'}"`,
-          timestamp: task.updated_at || new Date().toISOString()
-        });
-      });
-      
-      // Agregamos algunas actividades basadas en recompensas reclamadas
-      const claimedRewards = rewards
-        .filter((reward: any) => reward.claimed_count > 0)
-        .slice(0, 2);
-      
-      claimedRewards.forEach((reward: any, index: number) => {
-        recentActivity.push({
-          id: `reward-${reward.id || index}`,
-          type: 'reward_claimed',
-          username: 'Usuario',  // No tenemos esta información sin el endpoint real
-          description: `Reclamó la recompensa "${reward.name || 'Recompensa'}"`,
-          timestamp: reward.updated_at || new Date().toISOString()
-        });
-      });
-      
-      // Ordenamos por fecha (más reciente primero)
-      recentActivity.sort((a, b) => {
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-      });
+      const daily = statsResponse.data;
 
-      // Calculamos estadísticas
-      // Contamos tareas pendientes de aprobación (con status COMPLETED)
-      const pendingApprovals = tasks.filter((task: any) => task.status === 'COMPLETED').length;
-      const activeUsers = users.filter((user: any) => user.active).length;
+      const activeUsers = users.filter((u: any) => u.is_active).length;
 
       setStats({
         totalUsers: users.length,
         activeUsers,
-        totalTasks: tasks.length,
-        pendingApprovals,
+        totalTasks: daily.total || 0,
+        pendingApprovals: daily.completed || 0, // completadas pendientes de aprobar
         totalRewards: rewards.length,
-        recentActivity
+        recentActivity: []
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -189,6 +147,16 @@ const AdminDashboard: React.FC = () => {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard de Administración</h1>
         <p className="text-gray-600">Bienvenido al panel de control del sistema CASA</p>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Desde</label>
+            <input type="date" value={fromDate} onChange={(e)=>setFromDate(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Hasta</label>
+            <input type="date" value={toDate} onChange={(e)=>setToDate(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full" />
+          </div>
+        </div>
       </div>
 
       {/* Tarjetas de estadísticas */}

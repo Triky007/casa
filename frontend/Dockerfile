@@ -1,4 +1,5 @@
-FROM node:18-alpine
+# Use regular node image instead of alpine to avoid rollup issues
+FROM node:18
 
 WORKDIR /app
 
@@ -6,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source code
 COPY . .

@@ -22,13 +22,14 @@ const TaskApprovals: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0,10));
   const [selectedSubmission, setSelectedSubmission] = useState<TaskSubmission | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
 
   useEffect(() => {
     fetchSubmissions();
-  }, []);
+  }, [selectedDate]);
 
   useEffect(() => {
     // Aplicar filtros cuando cambia el término de búsqueda
@@ -47,15 +48,16 @@ const TaskApprovals: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
+      const params = { from_date: selectedDate, to_date: selectedDate } as any;
       // Get all assignments to include approved, pending and rejected tasks
-      const allAssignmentsResponse = await api.get('/api/tasks/assignments/all');
-      
+      const allAssignmentsResponse = await api.get('/api/tasks/assignments/all', { params });
+
       // Combine and map the data to our TaskSubmission interface
       const mappedSubmissions: TaskSubmission[] = allAssignmentsResponse.data.map((assignment: any) => {
         const task = assignment.task;
         const user = assignment.user;
-        
+
         return {
           id: assignment.id,
           task_id: assignment.task_id,
@@ -70,7 +72,7 @@ const TaskApprovals: React.FC = () => {
           credits: task ? task.credits : 0
         };
       });
-      
+
       setSubmissions(mappedSubmissions);
       setFilteredSubmissions(mappedSubmissions);
     } catch (err) {
@@ -200,8 +202,8 @@ const TaskApprovals: React.FC = () => {
         <p className="text-gray-600">Revisa y aprueba las tareas completadas por los usuarios</p>
       </div>
 
-      {/* Búsqueda */}
-      <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+      {/* Búsqueda y fecha */}
+      <div className="bg-white p-4 rounded-lg shadow-sm mb-6 grid grid-cols-1 gap-3">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FaSearch className="text-gray-400" />
@@ -212,6 +214,15 @@ const TaskApprovals: React.FC = () => {
             className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Fecha</label>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
       </div>

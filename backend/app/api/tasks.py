@@ -113,35 +113,40 @@ async def assign_task(
             detail="Task not found"
         )
     
+    # Para tareas diarias: limitar por día (scheduled_date)
+    today = datetime.utcnow().date()
+
     # Para tareas individuales, permitir múltiples asignaciones a diferentes usuarios
-    # Para tareas colectivas, verificar si ya está asignada
+    # Para tareas colectivas, verificar si ya está asignada ese día
     if task.task_type == "collective":
-        # Verificar si la tarea colectiva ya está asignada a cualquier usuario
+        # Verificar si la tarea colectiva ya está asignada a cualquier usuario hoy
         statement = select(TaskAssignment).where(
             TaskAssignment.task_id == task_id,
+            TaskAssignment.scheduled_date == today,
             TaskAssignment.status.in_([TaskStatus.PENDING, TaskStatus.COMPLETED])
         )
         existing_assignment = session.exec(statement).first()
         if existing_assignment:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Esta tarea colectiva ya está asignada a un usuario"
+                detail="Esta tarea colectiva ya está asignada hoy a un usuario"
             )
     else:  # Tarea individual
-        # Solo verificar si el mismo usuario ya tiene esta tarea asignada
+        # Solo verificar si el mismo usuario ya tiene esta tarea asignada hoy
         statement = select(TaskAssignment).where(
             TaskAssignment.task_id == task_id,
             TaskAssignment.user_id == current_user.id,
+            TaskAssignment.scheduled_date == today,
             TaskAssignment.status.in_([TaskStatus.PENDING, TaskStatus.COMPLETED])
         )
         existing_assignment = session.exec(statement).first()
         if existing_assignment:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya tienes esta tarea asignada"
+                detail="Ya tienes esta tarea asignada hoy"
             )
-    
-    assignment = TaskAssignment(task_id=task_id, user_id=current_user.id)
+
+    assignment = TaskAssignment(task_id=task_id, user_id=current_user.id, scheduled_date=today)
     session.add(assignment)
     session.commit()
     session.refresh(assignment)
@@ -150,12 +155,28 @@ async def assign_task(
 
 @router.get("/assignments", response_model=List[TaskAssignmentResponse])
 async def get_user_assignments(
+    from_date: str | None = None,
+    to_date: str | None = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
     statement = select(TaskAssignment).where(TaskAssignment.user_id == current_user.id)
+    # Apply date filters if provided (YYYY-MM-DD)
+    if from_date:
+        try:
+            fd = datetime.strptime(from_date, "%Y-%m-%d").date()
+            statement = statement.where(TaskAssignment.scheduled_date >= fd)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid from_date format, expected YYYY-MM-DD")
+    if to_date:
+        try:
+            td = datetime.strptime(to_date, "%Y-%m-%d").date()
+            statement = statement.where(TaskAssignment.scheduled_date <= td)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid to_date format, expected YYYY-MM-DD")
+
     assignments = session.exec(statement).all()
-    
+
     # Create response objects with task data
     response_assignments = []
     for assignment in assignments:
@@ -163,12 +184,14 @@ async def get_user_assignments(
         assignment_dict = assignment.dict()
         assignment_dict['task'] = task.dict() if task else None
         response_assignments.append(TaskAssignmentResponse(**assignment_dict))
-    
+
     return response_assignments
 
 
 @router.get("/assignments/all", response_model=List[TaskAssignmentResponse])
 async def get_all_assignments(
+    from_date: str | None = None,
+    to_date: str | None = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
@@ -178,10 +201,24 @@ async def get_all_assignments(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can view all assignments"
         )
-    
+
     statement = select(TaskAssignment)
+    # Apply date filters if provided
+    if from_date:
+        try:
+            fd = datetime.strptime(from_date, "%Y-%m-%d").date()
+            statement = statement.where(TaskAssignment.scheduled_date >= fd)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid from_date format, expected YYYY-MM-DD")
+    if to_date:
+        try:
+            td = datetime.strptime(to_date, "%Y-%m-%d").date()
+            statement = statement.where(TaskAssignment.scheduled_date <= td)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid to_date format, expected YYYY-MM-DD")
+
     assignments = session.exec(statement).all()
-    
+
     # Create response objects with task and user data
     response_assignments = []
     for assignment in assignments:
@@ -194,7 +231,7 @@ async def get_all_assignments(
             'username': user.username
         } if user else None
         response_assignments.append(TaskAssignmentResponse(**assignment_dict))
-    
+
     return response_assignments
 
 
@@ -310,6 +347,8 @@ async def reject_task(
 
 @router.get("/pending-approvals", response_model=List[TaskAssignmentResponse])
 async def get_pending_approvals(
+    from_date: str | None = None,
+    to_date: str | None = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
@@ -318,14 +357,28 @@ async def get_pending_approvals(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can view pending approvals"
         )
-    
+
     statement = select(TaskAssignment).where(TaskAssignment.status == TaskStatus.COMPLETED)
+    # Apply date filters if provided
+    if from_date:
+        try:
+            fd = datetime.strptime(from_date, "%Y-%m-%d").date()
+            statement = statement.where(TaskAssignment.scheduled_date >= fd)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid from_date format, expected YYYY-MM-DD")
+    if to_date:
+        try:
+            td = datetime.strptime(to_date, "%Y-%m-%d").date()
+            statement = statement.where(TaskAssignment.scheduled_date <= td)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid to_date format, expected YYYY-MM-DD")
+
     assignments = session.exec(statement).all()
-    
+
     # Load task data for each assignment
     for assignment in assignments:
         assignment.task = session.get(Task, assignment.task_id)
-    
+
     return assignments
 
 
@@ -340,14 +393,62 @@ async def reset_all_tasks(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can reset tasks"
         )
-    
+
     # Delete all task assignments to make tasks available again
     statement = select(TaskAssignment)
     assignments = session.exec(statement).all()
-    
+
     for assignment in assignments:
         session.delete(assignment)
-    
+
     session.commit()
-    
+
     return {"message": f"Successfully reset {len(assignments)} task assignments"}
+
+
+@router.get("/stats/daily")
+async def get_daily_stats(
+    from_date: str | None = None,
+    to_date: str | None = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Return counts per status in a date range (scheduled_date). Admin only."""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Only administrators can view stats")
+
+    # Default to today if not provided
+    if not from_date and not to_date:
+        today = datetime.utcnow().date()
+        from_dt = to_dt = today
+    else:
+        try:
+            from_dt = datetime.strptime(from_date or to_date, "%Y-%m-%d").date()
+            to_dt = datetime.strptime(to_date or from_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format, expected YYYY-MM-DD")
+
+    statement = select(TaskAssignment).where(
+        TaskAssignment.scheduled_date >= from_dt,
+        TaskAssignment.scheduled_date <= to_dt,
+    )
+    assignments = session.exec(statement).all()
+
+    counts = {s: 0 for s in [
+        TaskStatus.PENDING.value,
+        TaskStatus.COMPLETED.value,
+        TaskStatus.APPROVED.value,
+        TaskStatus.REJECTED.value,
+    ]}
+    for a in assignments:
+        counts[a.status.value] = counts.get(a.status.value, 0) + 1
+
+    return {
+        "from_date": from_dt.isoformat(),
+        "to_date": to_dt.isoformat(),
+        "total": len(assignments),
+        "pending": counts[TaskStatus.PENDING.value],
+        "completed": counts[TaskStatus.COMPLETED.value],
+        "approved": counts[TaskStatus.APPROVED.value],
+        "rejected": counts[TaskStatus.REJECTED.value],
+    }

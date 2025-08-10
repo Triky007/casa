@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 from ..models.task import TaskType, TaskStatus, TaskPeriodicity
 
 
@@ -36,6 +36,7 @@ class TaskAssignmentResponse(BaseModel):
     task_id: int
     user_id: int
     status: TaskStatus
+    scheduled_date: date
     completed_at: Optional[datetime]
     approved_at: Optional[datetime]
     approved_by: Optional[int]

@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlmodel import SQLModel, Field
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
 
@@ -38,6 +38,7 @@ class TaskAssignment(SQLModel, table=True):
     task_id: int = Field(foreign_key="task.id")
     user_id: int = Field(foreign_key="user.id")
     status: TaskStatus = Field(default=TaskStatus.PENDING)
+    scheduled_date: date = Field(default_factory=date.today, index=True)
     completed_at: Optional[datetime] = None
     approved_at: Optional[datetime] = None
     approved_by: Optional[int] = Field(default=None, foreign_key="user.id")

@@ -16,6 +16,7 @@ const Tasks: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'available' | 'assigned' | 'history' | 'completed'>('all');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0,10));
 
   const urlParams = new URLSearchParams(location.search);
   const initialTab = urlParams.get('tab') === 'history' ? 'history' : 'all';
@@ -25,17 +26,18 @@ const Tasks: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedDate]);
 
   const fetchData = async () => {
     try {
-      const assignmentsEndpoint = user?.role === 'admin' 
-        ? '/api/tasks/assignments/all' 
+      const assignmentsEndpoint = user?.role === 'admin'
+        ? '/api/tasks/assignments/all'
         : '/api/tasks/assignments';
-      
+
+      const params = { from_date: selectedDate, to_date: selectedDate } as any;
       const [tasksResponse, assignmentsResponse] = await Promise.all([
         api.get('/api/tasks/'),
-        api.get(assignmentsEndpoint)
+        api.get(assignmentsEndpoint, { params })
       ]);
 
       setTasks(tasksResponse.data);
@@ -249,18 +251,29 @@ const Tasks: React.FC = () => {
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <FaSearch className="h-4 w-4 text-gray-400" />
+      {/* Search + Date */}
+      <div className="grid grid-cols-1 gap-3 mb-4">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <FaSearch className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar tareas..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Buscar tareas..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        />
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">Fecha</label>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          />
+        </div>
       </div>
 
       {/* Filter Tabs */}
