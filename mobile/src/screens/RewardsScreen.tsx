@@ -27,10 +27,14 @@ export default function RewardsScreen() {
 
   const loadRewardsData = async () => {
     try {
+      console.log('Loading rewards data...');
       const [rewardsResponse, redemptionsResponse] = await Promise.all([
-        api.get('/api/rewards'),
-        api.get('/api/user/reward-redemptions'),
+        api.get('/api/rewards/'),
+        api.get('/api/rewards/redemptions'),
       ]);
+
+      console.log('Rewards loaded:', rewardsResponse.data.length);
+      console.log('Redemptions loaded:', redemptionsResponse.data.length);
 
       setRewards(rewardsResponse.data.filter((reward: Reward) => reward.is_active));
       setRedemptions(redemptionsResponse.data);
@@ -66,7 +70,8 @@ export default function RewardsScreen() {
           text: 'Canjear',
           onPress: async () => {
             try {
-              await api.post(`/api/user/redeem-reward/${rewardId}`);
+              console.log('Redeeming reward:', rewardId);
+              await api.post(`/api/rewards/redeem/${rewardId}`);
               await loadRewardsData();
               Alert.alert('¡Éxito!', 'Recompensa canjeada exitosamente');
             } catch (error) {

@@ -24,7 +24,9 @@ export default function TasksScreen() {
 
   const loadTasks = async () => {
     try {
-      const response = await api.get('/api/user/task-assignments');
+      console.log('Loading user tasks...');
+      const response = await api.get('/api/tasks/assignments');
+      console.log('User tasks loaded:', response.data.length);
       setTasks(response.data);
     } catch (error) {
       console.error('Error loading tasks:', error);
@@ -42,7 +44,8 @@ export default function TasksScreen() {
 
   const completeTask = async (taskId: number) => {
     try {
-      await api.post(`/api/user/task-assignments/${taskId}/complete`);
+      console.log('Completing task:', taskId);
+      await api.patch(`/api/tasks/complete/${taskId}`);
       await loadTasks(); // Reload tasks
       Alert.alert('¡Éxito!', 'Tarea marcada como completada');
     } catch (error) {

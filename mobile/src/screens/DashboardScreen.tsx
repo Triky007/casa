@@ -49,13 +49,19 @@ export default function DashboardScreen() {
 
   const loadDashboardData = async () => {
     try {
+      console.log('Loading dashboard data for user:', user?.id);
+
       const [statsResponse, tasksResponse] = await Promise.all([
-        api.get('/api/user/stats'),
-        api.get('/api/user/task-assignments?limit=5'),
+        api.get(`/api/users/${user?.id}/stats`),
+        api.get('/api/tasks/assignments'),
       ]);
 
+      console.log('Stats loaded:', statsResponse.data);
+      console.log('Tasks loaded:', tasksResponse.data.length);
+
       setStats(statsResponse.data);
-      setRecentTasks(tasksResponse.data);
+      // Tomar solo las 5 más recientes
+      setRecentTasks(tasksResponse.data.slice(0, 5));
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       Alert.alert('Error', 'No se pudieron cargar los datos del dashboard');

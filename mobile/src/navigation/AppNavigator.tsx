@@ -1,4 +1,5 @@
 import React from 'react';
+import { TouchableOpacity, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -88,6 +89,26 @@ function MainTabNavigator() {
 }
 
 function AdminNavigator() {
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro de que quieres cerrar sesión?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: logout,
+        },
+      ]
+    );
+  };
+
   return (
     <AdminStack.Navigator
       screenOptions={{
@@ -98,6 +119,14 @@ function AdminNavigator() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerRight: () => (
+          <TouchableOpacity
+            style={{ marginRight: 16, padding: 4 }}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        ),
       }}
     >
       <AdminStack.Screen 
