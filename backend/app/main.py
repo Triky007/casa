@@ -1,8 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .core.database import create_db_and_tables
 from .api import auth, tasks, users, rewards
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Family Tasks API",
@@ -13,12 +18,23 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    #allow_origins=settings.allowed_origins_list,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# Debug middleware for mobile requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    user_agent = request.headers.get("user-agent", "")
+    origin = request.headers.get("origin", "")
+    logger.info(f"Request: {request.method} {request.url} - Origin: {origin} - User-Agent: {user_agent[:50]}...")
+
+    response = await call_next(request)
+    logger.info(f"Response: {response.status_code}")
+    return response
 
 # Include routers
 app.include_router(auth.router)
