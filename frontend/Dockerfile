@@ -14,6 +14,7 @@ COPY . .
 
 # Set environment for production build
 ENV NODE_ENV=production
+ENV VITE_API_URL=""
 
 # Build the application
 RUN npm run build
