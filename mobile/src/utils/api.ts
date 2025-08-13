@@ -10,14 +10,14 @@ const getApiUrl = () => {
   // Para desarrollo
   if (Platform.OS === 'web') {
     // En web usa localhost
-    return 'http://localhost:3100';
+    return 'http://localhost:3110';
   } else {
     // En dispositivos móviles - Usar IP principal de la red
-    return 'http://192.168.9.101:3100';
+    return 'http://192.168.9.101:3110';
 
     // IPs alternativas si no funciona:
-    // return 'http://192.168.248.1:3100';  // VMware adapter
-    // return 'http://10.2.0.2:3100';       // ProtonVPN
+    // return 'http://192.168.248.1:3110';  // VMware adapter
+    // return 'http://10.2.0.2:3110';       // ProtonVPN
   }
 };
 
