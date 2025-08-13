@@ -115,6 +115,42 @@ docker-compose up --build -d
 docker-compose ps
 ```
 
+## 🔧 Build del Frontend
+
+### Scripts Automatizados
+
+**Build completo con auto-corrección:**
+```bash
+chmod +x build-frontend.sh
+./build-frontend.sh
+```
+
+**Solo corrección de localhost (rápida):**
+```bash
+chmod +x fix-localhost.sh
+./fix-localhost.sh
+```
+
+### Problema Conocido: localhost:3110
+
+Durante el build del frontend, Vite puede incluir `http://localhost:3110` en el código JavaScript compilado, lo que causa errores `net::ERR_BLOCKED_BY_CLIENT` con bloqueadores de rastreadores.
+
+**Solución Automática:**
+Los scripts anteriores corrigen automáticamente este problema reemplazando `http://localhost:3110` por cadenas vacías, permitiendo que la aplicación use rutas relativas.
+
+**Verificación:**
+```bash
+# Verificar si hay archivos con localhost:3110
+docker-compose -f docker-compose.prod.yml exec frontend find /usr/share/nginx/html/assets/ -name "index-*.js" -exec grep -l "localhost:3110" {} \;
+
+# Si devuelve archivos, ejecutar corrección:
+./fix-localhost.sh
+```
+
+**Después de cualquier corrección:**
+- Limpia el cache del navegador: `Ctrl+Shift+R`
+- Verifica que las peticiones usen rutas relativas: `/api/user/login`
+
 ## 🔐 Seguridad
 
 - ✅ PostgreSQL con credenciales seguras
@@ -129,11 +165,22 @@ docker-compose ps
 ```bash
 cd mobile
 npm install
-npm start
 
-# Configurar IP en mobile/src/utils/api.ts
-# Para producción: https://api.family.triky.app
+# Desarrollo con tunnel (recomendado)
+npx expo start --tunnel
+
+# O desarrollo con LAN
+npx expo start --lan
+
+# O desarrollo con IP específica
+npx expo start --host 192.168.9.101
 ```
+
+**Configuración de API:**
+- **Desarrollo**: `http://192.168.9.101:3110` (configurado en `mobile/src/utils/api.ts`)
+- **Producción**: `https://api.family.triky.app`
+
+**Escanear QR** con la app Expo Go para probar en dispositivo móvil.
 
 ## 🆘 Troubleshooting
 

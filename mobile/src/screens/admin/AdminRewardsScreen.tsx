@@ -66,6 +66,30 @@ export default function AdminRewardsScreen() {
     );
   };
 
+  const deleteReward = async (rewardId: number) => {
+    Alert.alert(
+      'Eliminar recompensa',
+      '¿Estás seguro de que quieres eliminar esta recompensa? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/rewards/${rewardId}`);
+              await loadRewards();
+              Alert.alert('Éxito', 'Recompensa eliminada correctamente');
+            } catch (error) {
+              console.error('Error deleting reward:', error);
+              Alert.alert('Error', 'No se pudo eliminar la recompensa');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderRewardCard = (reward: Reward) => {
     return (
       <View key={reward.id} style={styles.rewardCard}>
