@@ -183,3 +183,18 @@ echo "• Diagnóstico: ./diagnose-upload-issues.sh"
 echo "• Monitoreo: ./monitor-uploads.sh"
 
 log_success "¡Listo para probar uploads de fotos!"
+
+# Paso extra: Ofrecer debug en tiempo real
+echo
+log_info "¿Quieres debuggear el error en tiempo real? (y/n)"
+read -r DEBUG_CHOICE
+
+if [ "$DEBUG_CHOICE" = "y" ] || [ "$DEBUG_CHOICE" = "Y" ]; then
+    log_info "Ejecutando debug en tiempo real..."
+    if [ -f "debug-upload-error.sh" ]; then
+        chmod +x debug-upload-error.sh
+        ./debug-upload-error.sh
+    else
+        log_warning "Script de debug no encontrado"
+    fi
+fi
