@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Reward } from '../../types';
 import api from '../../utils/api';
 import { FaGift, FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
-import { MdClose } from 'react-icons/md';
+import { MdClose, MdRestore } from 'react-icons/md';
 import { GiTrophyCup } from 'react-icons/gi';
 
 interface RewardManagementProps {
@@ -23,52 +23,159 @@ const RewardManagement: React.FC<RewardManagementProps> = ({ rewards, onRewardCh
 
   const handleCreateReward = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validar datos
+    if (!newReward.name.trim()) {
+      alert('El nombre de la recompensa es requerido.');
+      return;
+    }
+
+    if (newReward.cost < 1) {
+      alert('El costo debe ser mayor a 0.');
+      return;
+    }
+
     try {
-      await api.post('/api/rewards/', newReward);
+      console.log('Creating reward:', newReward);
+
+      const response = await api.post('/api/rewards/', {
+        name: newReward.name.trim(),
+        description: newReward.description.trim() || null,
+        cost: newReward.cost
+      });
+
+      console.log('Create response:', response.data);
+
       setNewReward({
         name: '',
         description: '',
         cost: 20
       });
       setShowAddReward(false);
-      onRewardChange(); // Refresh reward list
-    } catch (error) {
+
+      // Refresh reward list
+      await onRewardChange();
+
+      alert('Recompensa creada exitosamente.');
+    } catch (error: any) {
       console.error('Error creating reward:', error);
-      alert('Error al crear la recompensa. Por favor, intenta nuevamente.');
+
+      if (error.response?.status === 403) {
+        alert('No tienes permisos para crear recompensas.');
+      } else if (error.response?.status === 400) {
+        alert('Datos inválidos. Verifica que todos los campos estén correctos.');
+      } else {
+        alert('Error al crear la recompensa. Por favor, intenta nuevamente.');
+      }
     }
   };
 
   const handleUpdateReward = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedReward) return;
-    
+
+    // Validar datos
+    if (!selectedReward.name.trim()) {
+      alert('El nombre de la recompensa es requerido.');
+      return;
+    }
+
+    if (selectedReward.cost < 1) {
+      alert('El costo debe ser mayor a 0.');
+      return;
+    }
+
     try {
-      await api.put(`/api/rewards/${selectedReward.id}`, {
+      console.log('Updating reward:', selectedReward.id, {
         name: selectedReward.name,
         description: selectedReward.description,
         cost: selectedReward.cost,
         is_active: selectedReward.is_active
       });
+
+      const response = await api.put(`/api/rewards/${selectedReward.id}`, {
+        name: selectedReward.name.trim(),
+        description: selectedReward.description?.trim() || null,
+        cost: selectedReward.cost,
+        is_active: selectedReward.is_active
+      });
+
+      console.log('Update response:', response.data);
+
       setShowEditReward(false);
       setSelectedReward(null);
-      onRewardChange(); // Refresh reward list
-    } catch (error) {
+
+      // Refresh reward list
+      await onRewardChange();
+
+      alert('Recompensa actualizada exitosamente.');
+    } catch (error: any) {
       console.error('Error updating reward:', error);
-      alert('Error al actualizar la recompensa. Por favor, intenta nuevamente.');
+
+      if (error.response?.status === 404) {
+        alert('La recompensa no fue encontrada.');
+      } else if (error.response?.status === 403) {
+        alert('No tienes permisos para actualizar recompensas.');
+      } else if (error.response?.status === 400) {
+        alert('Datos inválidos. Verifica que todos los campos estén correctos.');
+      } else {
+        alert('Error al actualizar la recompensa. Por favor, intenta nuevamente.');
+      }
     }
   };
 
   const handleDeleteReward = async (rewardId: number) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta recompensa? Esta acción no se puede deshacer.')) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta recompensa?')) {
       return;
     }
-    
+
     try {
-      await api.delete(`/api/rewards/${rewardId}`);
-      onRewardChange(); // Refresh reward list
-    } catch (error) {
+      const response = await api.delete(`/api/rewards/${rewardId}`);
+      console.log('Delete response:', response);
+
+      // Refresh reward list
+      await onRewardChange();
+
+      alert('Recompensa eliminada exitosamente.');
+    } catch (error: any) {
       console.error('Error deleting reward:', error);
-      alert('Error al eliminar la recompensa. Por favor, intenta nuevamente.');
+
+      if (error.response?.status === 404) {
+        alert('La recompensa no fue encontrada.');
+      } else if (error.response?.status === 403) {
+        alert('No tienes permisos para eliminar recompensas.');
+      } else {
+        alert('Error al eliminar la recompensa. Por favor, intenta nuevamente.');
+      }
+    }
+  };
+
+  const handleRestoreReward = async (rewardId: number) => {
+    if (!confirm('¿Estás seguro de que quieres restaurar esta recompensa?')) {
+      return;
+    }
+
+    try {
+      const response = await api.patch(`/api/rewards/${rewardId}`, {
+        is_active: true
+      });
+
+      console.log('Restore response:', response.data);
+
+      // Refresh reward list
+      await onRewardChange();
+
+      alert('Recompensa restaurada exitosamente.');
+    } catch (error: any) {
+      console.error('Error restoring reward:', error);
+
+      if (error.response?.status === 404) {
+        alert('La recompensa no fue encontrada.');
+      } else if (error.response?.status === 403) {
+        alert('No tienes permisos para restaurar recompensas.');
+      } else {
+        alert('Error al restaurar la recompensa. Por favor, intenta nuevamente.');
+      }
     }
   };
 
@@ -92,13 +199,18 @@ const RewardManagement: React.FC<RewardManagementProps> = ({ rewards, onRewardCh
 
         <div className="space-y-3">
           {rewards.map((reward) => (
-            <div key={reward.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+            <div key={reward.id} className={`flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0 ${!reward.is_active ? 'opacity-60 bg-gray-50' : ''}`}>
               <div className="flex-1">
                 <div className="flex items-center">
-                  <GiTrophyCup className="w-4 h-4 text-amber-500 mr-2" />
-                  <p className="font-medium text-gray-900">{reward.name}</p>
+                  <GiTrophyCup className={`w-4 h-4 mr-2 ${reward.is_active ? 'text-amber-500' : 'text-gray-400'}`} />
+                  <p className={`font-medium ${reward.is_active ? 'text-gray-900' : 'text-gray-500'}`}>
+                    {reward.name}
+                    {!reward.is_active && <span className="ml-2 text-xs text-red-600">(ELIMINADA)</span>}
+                  </p>
                 </div>
-                <p className="text-sm text-gray-600 line-clamp-1">{reward.description}</p>
+                <p className={`text-sm line-clamp-1 ${reward.is_active ? 'text-gray-600' : 'text-gray-400'}`}>
+                  {reward.description}
+                </p>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="text-right mr-2">
@@ -120,13 +232,23 @@ const RewardManagement: React.FC<RewardManagementProps> = ({ rewards, onRewardCh
                 >
                   <FaEdit className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={() => handleDeleteReward(reward.id)}
-                  className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
-                  title="Eliminar recompensa"
-                >
-                  <FaTrash className="w-4 h-4" />
-                </button>
+                {reward.is_active ? (
+                  <button
+                    onClick={() => handleDeleteReward(reward.id)}
+                    className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                    title="Eliminar recompensa"
+                  >
+                    <FaTrash className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleRestoreReward(reward.id)}
+                    className="p-1 bg-green-100 text-green-600 rounded hover:bg-green-200"
+                    title="Restaurar recompensa"
+                  >
+                    <MdRestore className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

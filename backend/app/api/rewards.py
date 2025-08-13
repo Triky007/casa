@@ -97,7 +97,7 @@ async def create_reward(
 @router.put("/{reward_id}", response_model=RewardResponse)
 async def update_reward(
     reward_id: int,
-    reward_data: RewardCreate,
+    reward_data: RewardUpdate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
@@ -114,8 +114,9 @@ async def update_reward(
             detail="Reward not found"
         )
 
-    # Update reward fields
-    for field, value in reward_data.dict().items():
+    # Update only provided fields
+    update_data = reward_data.dict(exclude_unset=True)
+    for field, value in update_data.items():
         setattr(reward, field, value)
 
     session.add(reward)
@@ -166,18 +167,27 @@ async def delete_reward(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can delete rewards"
         )
-    
+
     reward = session.get(Reward, reward_id)
     if not reward:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Reward not found"
         )
-    
-    # Instead of hard delete, set as inactive
-    reward.is_active = False
-    session.add(reward)
-    session.commit()
+
+    # Check if reward has been redeemed
+    redemptions_statement = select(RewardRedemption).where(RewardRedemption.reward_id == reward_id)
+    redemptions = session.exec(redemptions_statement).all()
+
+    if redemptions:
+        # If reward has been redeemed, only deactivate it
+        reward.is_active = False
+        session.add(reward)
+        session.commit()
+    else:
+        # If no redemptions, we can safely delete it
+        session.delete(reward)
+        session.commit()
 
 
 @router.post("/redeem/{reward_id}", response_model=RewardRedemptionResponse)
