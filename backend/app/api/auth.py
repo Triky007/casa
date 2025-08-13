@@ -1,7 +1,8 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import Session, select
+from typing import Optional
 from ..core.database import get_session
 from ..core.security import verify_password, get_password_hash, create_access_token, verify_token
 from ..models.user import User
@@ -11,8 +12,23 @@ router = APIRouter(prefix="/api/user", tags=["user"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/validate")
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)):
-    payload = verify_token(token)
+async def get_current_user(
+    request: Request,
+    session: Session = Depends(get_session),
+    token: Optional[str] = Depends(oauth2_scheme),
+    auth_token: Optional[str] = Cookie(None, alias="auth_token")
+):
+    # Try to get token from cookie first, then from Authorization header
+    access_token = auth_token or token
+
+    if not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = verify_token(access_token)
     username: str = payload.get("sub")
     if username is None:
         raise HTTPException(
@@ -33,7 +49,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: Session
 
 
 @router.post("/validate", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
+async def login(
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    session: Session = Depends(get_session)
+):
     statement = select(User).where(User.username == form_data.username)
     user = session.exec(statement).first()
 
@@ -45,6 +65,18 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Sessi
         )
 
     access_token = create_access_token(data={"sub": user.username})
+
+    # Set secure HTTP-only cookie
+    response.set_cookie(
+        key="auth_token",
+        value=access_token,
+        httponly=True,
+        secure=True,  # Only over HTTPS
+        samesite="none",  # Allow cross-site requests
+        max_age=1800,  # 30 minutes (same as token expiry)
+        path="/"
+    )
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -76,3 +108,15 @@ async def register(user_data: UserCreate, session: Session = Depends(get_session
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    """Logout user by clearing the auth cookie"""
+    response.delete_cookie(
+        key="auth_token",
+        path="/",
+        secure=True,
+        samesite="none"
+    )
+    return {"message": "Successfully logged out"}

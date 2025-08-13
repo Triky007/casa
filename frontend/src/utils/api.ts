@@ -4,6 +4,7 @@ const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:3110'
 
 export const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true, // Include cookies in requests
 });
 
 // Request interceptor to add auth token
