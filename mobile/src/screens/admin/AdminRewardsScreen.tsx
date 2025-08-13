@@ -5,18 +5,35 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Reward } from '../../types';
 import api from '../../utils/api';
+import {
+  AdminHeader,
+  ActionButtons,
+  AdminModal,
+  RewardForm,
+} from '../../components/admin';
 
 export default function AdminRewardsScreen() {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+
+  // Form states
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    cost: '20',
+  });
 
   useEffect(() => {
     loadRewards();
@@ -90,6 +107,70 @@ export default function AdminRewardsScreen() {
     );
   };
 
+  const openCreateModal = () => {
+    setFormData({ name: '', description: '', cost: '20' });
+    setShowCreateModal(true);
+  };
+
+  const openEditModal = (reward: Reward) => {
+    setSelectedReward(reward);
+    setFormData({
+      name: reward.name,
+      description: reward.description || '',
+      cost: reward.cost.toString(),
+    });
+    setShowEditModal(true);
+  };
+
+  const closeModals = () => {
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    setSelectedReward(null);
+    setFormData({ name: '', description: '', cost: '20' });
+  };
+
+  const createReward = async () => {
+    if (!formData.name.trim()) {
+      Alert.alert('Error', 'El nombre es requerido');
+      return;
+    }
+
+    try {
+      await api.post('/api/rewards/', {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        cost: parseInt(formData.cost) || 20,
+      });
+      await loadRewards();
+      closeModals();
+      Alert.alert('Éxito', 'Recompensa creada correctamente');
+    } catch (error) {
+      console.error('Error creating reward:', error);
+      Alert.alert('Error', 'No se pudo crear la recompensa');
+    }
+  };
+
+  const updateReward = async () => {
+    if (!selectedReward || !formData.name.trim()) {
+      Alert.alert('Error', 'El nombre es requerido');
+      return;
+    }
+
+    try {
+      await api.put(`/api/rewards/${selectedReward.id}`, {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        cost: parseInt(formData.cost) || 20,
+      });
+      await loadRewards();
+      closeModals();
+      Alert.alert('Éxito', 'Recompensa actualizada correctamente');
+    } catch (error) {
+      console.error('Error updating reward:', error);
+      Alert.alert('Error', 'No se pudo actualizar la recompensa');
+    }
+  };
+
   const renderRewardCard = (reward: Reward) => {
     return (
       <View key={reward.id} style={styles.rewardCard}>
@@ -124,50 +205,16 @@ export default function AdminRewardsScreen() {
             Creada: {new Date(reward.created_at).toLocaleDateString('es-ES')}
           </Text>
 
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                {
-                  backgroundColor: reward.is_active ? '#FEE2E2' : '#DCFCE7',
-                },
-              ]}
-              onPress={() => toggleRewardStatus(reward.id, reward.is_active)}
-            >
-              <Ionicons
-                name={reward.is_active ? 'close-circle' : 'checkmark-circle'}
-                size={16}
-                color={reward.is_active ? '#EF4444' : '#10B981'}
-              />
-              <Text
-                style={[
-                  styles.actionButtonText,
-                  {
-                    color: reward.is_active ? '#EF4444' : '#10B981',
-                  },
-                ]}
-              >
-                {reward.is_active ? 'Desactivar' : 'Activar'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                styles.deleteButton,
-              ]}
-              onPress={() => deleteReward(reward.id)}
-            >
-              <Ionicons
-                name="trash"
-                size={16}
-                color="#EF4444"
-              />
-              <Text style={styles.deleteButtonText}>
-                Eliminar
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <ActionButtons
+            onEdit={() => openEditModal(reward)}
+            onToggleStatus={() => toggleRewardStatus(reward.id, reward.is_active)}
+            onDelete={() => deleteReward(reward.id)}
+            isActive={reward.is_active}
+            statusText={{
+              active: 'Desactivar',
+              inactive: 'Activar',
+            }}
+          />
         </View>
       </View>
     );
@@ -185,6 +232,11 @@ export default function AdminRewardsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AdminHeader
+        title="Gestión de Recompensas"
+        onCreatePress={openCreateModal}
+      />
+
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -202,6 +254,26 @@ export default function AdminRewardsScreen() {
           )}
         </View>
       </ScrollView>
+
+      <AdminModal
+        visible={showCreateModal}
+        title="Nueva Recompensa"
+        onClose={closeModals}
+        onSave={createReward}
+        isEdit={false}
+      >
+        <RewardForm formData={formData} setFormData={setFormData} />
+      </AdminModal>
+
+      <AdminModal
+        visible={showEditModal}
+        title="Editar Recompensa"
+        onClose={closeModals}
+        onSave={updateReward}
+        isEdit={true}
+      >
+        <RewardForm formData={formData} setFormData={setFormData} />
+      </AdminModal>
     </SafeAreaView>
   );
 }
@@ -216,6 +288,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   scrollView: {
     flex: 1,
   },
@@ -288,31 +361,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     flex: 1,
   },
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  deleteButton: {
-    backgroundColor: '#FEE2E2',
-  },
-  deleteButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-    color: '#EF4444',
-  },
+
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -324,4 +373,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
   },
+
 });

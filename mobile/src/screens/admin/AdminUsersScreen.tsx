@@ -5,18 +5,36 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { User } from '../../types';
 import api from '../../utils/api';
+import {
+  AdminHeader,
+  ActionButtons,
+  AdminModal,
+  UserForm,
+} from '../../components/admin';
 
 export default function AdminUsersScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Form states
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    role: 'user' as 'admin' | 'user',
+    credits: '0',
+  });
 
   useEffect(() => {
     loadUsers();
@@ -66,6 +84,112 @@ export default function AdminUsersScreen() {
     );
   };
 
+  const deleteUser = async (userId: number) => {
+    Alert.alert(
+      'Eliminar usuario',
+      '¿Estás seguro de que quieres eliminar este usuario? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/users/${userId}`);
+              await loadUsers();
+              Alert.alert('Éxito', 'Usuario eliminado correctamente');
+            } catch (error) {
+              console.error('Error deleting user:', error);
+              Alert.alert('Error', 'No se pudo eliminar el usuario');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const openCreateModal = () => {
+    setFormData({
+      username: '',
+      password: '',
+      role: 'user',
+      credits: '0',
+    });
+    setShowCreateModal(true);
+  };
+
+  const openEditModal = (user: User) => {
+    setSelectedUser(user);
+    setFormData({
+      username: user.username,
+      password: '', // No mostrar la contraseña actual
+      role: user.role,
+      credits: user.credits.toString(),
+    });
+    setShowEditModal(true);
+  };
+
+  const closeModals = () => {
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    setSelectedUser(null);
+    setFormData({
+      username: '',
+      password: '',
+      role: 'user',
+      credits: '0',
+    });
+  };
+
+  const createUser = async () => {
+    if (!formData.username.trim() || !formData.password.trim()) {
+      Alert.alert('Error', 'El nombre de usuario y contraseña son requeridos');
+      return;
+    }
+
+    try {
+      await api.post('/api/users/', {
+        username: formData.username.trim(),
+        password: formData.password,
+        role: formData.role,
+        credits: parseInt(formData.credits) || 0,
+      });
+      await loadUsers();
+      closeModals();
+      Alert.alert('Éxito', 'Usuario creado correctamente');
+    } catch (error) {
+      console.error('Error creating user:', error);
+      Alert.alert('Error', 'No se pudo crear el usuario');
+    }
+  };
+
+  const updateUser = async () => {
+    if (!selectedUser || !formData.username.trim()) {
+      Alert.alert('Error', 'El nombre de usuario es requerido');
+      return;
+    }
+
+    try {
+      const updateData: any = {
+        role: formData.role,
+        credits: parseInt(formData.credits) || 0,
+      };
+
+      // Solo incluir la contraseña si se ha proporcionado una nueva
+      if (formData.password.trim() !== '') {
+        updateData.password = formData.password;
+      }
+
+      await api.put(`/api/users/${selectedUser.id}`, updateData);
+      await loadUsers();
+      closeModals();
+      Alert.alert('Éxito', 'Usuario actualizado correctamente');
+    } catch (error) {
+      console.error('Error updating user:', error);
+      Alert.alert('Error', 'No se pudo actualizar el usuario');
+    }
+  };
+
   const renderUserCard = (user: User) => {
     return (
       <View key={user.id} style={styles.userCard}>
@@ -97,31 +221,16 @@ export default function AdminUsersScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            {
-              backgroundColor: user.is_active ? '#FEE2E2' : '#DCFCE7',
-            },
-          ]}
-          onPress={() => toggleUserStatus(user.id, user.is_active)}
-        >
-          <Ionicons
-            name={user.is_active ? 'close-circle' : 'checkmark-circle'}
-            size={16}
-            color={user.is_active ? '#EF4444' : '#10B981'}
-          />
-          <Text
-            style={[
-              styles.actionButtonText,
-              {
-                color: user.is_active ? '#EF4444' : '#10B981',
-              },
-            ]}
-          >
-            {user.is_active ? 'Desactivar' : 'Activar'}
-          </Text>
-        </TouchableOpacity>
+        <ActionButtons
+          onEdit={() => openEditModal(user)}
+          onToggleStatus={() => toggleUserStatus(user.id, user.is_active)}
+          onDelete={() => deleteUser(user.id)}
+          isActive={user.is_active}
+          statusText={{
+            active: 'Desactivar',
+            inactive: 'Activar',
+          }}
+        />
       </View>
     );
   };
@@ -138,6 +247,11 @@ export default function AdminUsersScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AdminHeader
+        title="Gestión de Usuarios"
+        onCreatePress={openCreateModal}
+      />
+
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -155,6 +269,26 @@ export default function AdminUsersScreen() {
           )}
         </View>
       </ScrollView>
+
+      <AdminModal
+        visible={showCreateModal}
+        title="Nuevo Usuario"
+        onClose={closeModals}
+        onSave={createUser}
+        isEdit={false}
+      >
+        <UserForm formData={formData} setFormData={setFormData} isEdit={false} />
+      </AdminModal>
+
+      <AdminModal
+        visible={showEditModal}
+        title="Editar Usuario"
+        onClose={closeModals}
+        onSave={updateUser}
+        isEdit={true}
+      >
+        <UserForm formData={formData} setFormData={setFormData} isEdit={true} />
+      </AdminModal>
     </SafeAreaView>
   );
 }
@@ -169,6 +303,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   scrollView: {
     flex: 1,
   },
@@ -230,18 +365,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginLeft: 4,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
+
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -253,4 +377,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
   },
+
 });

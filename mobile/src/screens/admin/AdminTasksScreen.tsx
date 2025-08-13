@@ -5,18 +5,37 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Task } from '../../types';
 import api from '../../utils/api';
+import {
+  AdminHeader,
+  ActionButtons,
+  AdminModal,
+  TaskForm,
+} from '../../components/admin';
 
 export default function AdminTasksScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // Form states
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    credits: '10',
+    task_type: 'individual' as 'individual' | 'collective',
+    periodicity: 'daily' as 'daily' | 'weekly' | 'special',
+  });
 
   useEffect(() => {
     loadTasks();
@@ -64,6 +83,112 @@ export default function AdminTasksScreen() {
         },
       ]
     );
+  };
+
+  const deleteTask = async (taskId: number) => {
+    Alert.alert(
+      'Eliminar tarea',
+      '¿Estás seguro de que quieres eliminar esta tarea? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/tasks/${taskId}`);
+              await loadTasks();
+              Alert.alert('Éxito', 'Tarea eliminada correctamente');
+            } catch (error) {
+              console.error('Error deleting task:', error);
+              Alert.alert('Error', 'No se pudo eliminar la tarea');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const openCreateModal = () => {
+    setFormData({
+      name: '',
+      description: '',
+      credits: '10',
+      task_type: 'individual',
+      periodicity: 'daily',
+    });
+    setShowCreateModal(true);
+  };
+
+  const openEditModal = (task: Task) => {
+    setSelectedTask(task);
+    setFormData({
+      name: task.name,
+      description: task.description || '',
+      credits: task.credits.toString(),
+      task_type: task.task_type,
+      periodicity: task.periodicity,
+    });
+    setShowEditModal(true);
+  };
+
+  const closeModals = () => {
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    setSelectedTask(null);
+    setFormData({
+      name: '',
+      description: '',
+      credits: '10',
+      task_type: 'individual',
+      periodicity: 'daily',
+    });
+  };
+
+  const createTask = async () => {
+    if (!formData.name.trim()) {
+      Alert.alert('Error', 'El nombre es requerido');
+      return;
+    }
+
+    try {
+      await api.post('/api/tasks/', {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        credits: parseInt(formData.credits) || 10,
+        task_type: formData.task_type,
+        periodicity: formData.periodicity,
+      });
+      await loadTasks();
+      closeModals();
+      Alert.alert('Éxito', 'Tarea creada correctamente');
+    } catch (error) {
+      console.error('Error creating task:', error);
+      Alert.alert('Error', 'No se pudo crear la tarea');
+    }
+  };
+
+  const updateTask = async () => {
+    if (!selectedTask || !formData.name.trim()) {
+      Alert.alert('Error', 'El nombre es requerido');
+      return;
+    }
+
+    try {
+      await api.put(`/api/tasks/${selectedTask.id}`, {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        credits: parseInt(formData.credits) || 10,
+        task_type: formData.task_type,
+        periodicity: formData.periodicity,
+      });
+      await loadTasks();
+      closeModals();
+      Alert.alert('Éxito', 'Tarea actualizada correctamente');
+    } catch (error) {
+      console.error('Error updating task:', error);
+      Alert.alert('Error', 'No se pudo actualizar la tarea');
+    }
   };
 
   const getPeriodicityText = (periodicity: string) => {
@@ -133,31 +258,16 @@ export default function AdminTasksScreen() {
             <Text style={styles.creditsText}>{task.credits} créditos</Text>
           </View>
 
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              {
-                backgroundColor: task.is_active ? '#FEE2E2' : '#DCFCE7',
-              },
-            ]}
-            onPress={() => toggleTaskStatus(task.id, task.is_active)}
-          >
-            <Ionicons
-              name={task.is_active ? 'close-circle' : 'checkmark-circle'}
-              size={16}
-              color={task.is_active ? '#EF4444' : '#10B981'}
-            />
-            <Text
-              style={[
-                styles.actionButtonText,
-                {
-                  color: task.is_active ? '#EF4444' : '#10B981',
-                },
-              ]}
-            >
-              {task.is_active ? 'Desactivar' : 'Activar'}
-            </Text>
-          </TouchableOpacity>
+          <ActionButtons
+            onEdit={() => openEditModal(task)}
+            onToggleStatus={() => toggleTaskStatus(task.id, task.is_active)}
+            onDelete={() => deleteTask(task.id)}
+            isActive={task.is_active}
+            statusText={{
+              active: 'Desactivar',
+              inactive: 'Activar',
+            }}
+          />
         </View>
       </View>
     );
@@ -175,6 +285,11 @@ export default function AdminTasksScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AdminHeader
+        title="Gestión de Tareas"
+        onCreatePress={openCreateModal}
+      />
+
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -192,6 +307,26 @@ export default function AdminTasksScreen() {
           )}
         </View>
       </ScrollView>
+
+      <AdminModal
+        visible={showCreateModal}
+        title="Nueva Tarea"
+        onClose={closeModals}
+        onSave={createTask}
+        isEdit={false}
+      >
+        <TaskForm formData={formData} setFormData={setFormData} />
+      </AdminModal>
+
+      <AdminModal
+        visible={showEditModal}
+        title="Editar Tarea"
+        onClose={closeModals}
+        onSave={updateTask}
+        isEdit={true}
+      >
+        <TaskForm formData={formData} setFormData={setFormData} />
+      </AdminModal>
     </SafeAreaView>
   );
 }
@@ -206,6 +341,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   scrollView: {
     flex: 1,
   },
@@ -286,6 +422,7 @@ const styles = StyleSheet.create({
   creditsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   creditsText: {
     fontSize: 14,
@@ -293,18 +430,7 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
     marginLeft: 4,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
+
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -316,4 +442,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
   },
+
 });
