@@ -16,6 +16,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminTasks from './pages/admin/AdminTasks';
 import AdminRewards from './pages/admin/AdminRewards';
 import TaskApprovals from './pages/admin/TaskApprovals';
+import AdminSettings from './pages/admin/AdminSettings';
 
 function App() {
   return (
@@ -51,7 +52,7 @@ function App() {
               <Route path="tasks" element={<AdminTasks />} />
               <Route path="rewards" element={<AdminRewards />} />
               <Route path="task-approvals" element={<TaskApprovals />} />
-              <Route path="settings" element={<div className="p-4"><h1 className="text-2xl font-bold">Configuración</h1><p className="text-gray-600 mt-2">Página en construcción</p></div>} />
+              <Route path="settings" element={<AdminSettings />} />
             </Route>
             
             {/* Redirección para rutas no encontradas */}
