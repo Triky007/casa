@@ -22,6 +22,9 @@ COPY postcss.config.js ./
 ENV NODE_ENV=production
 ENV VITE_API_URL=""
 
+# Create a production .env file to override any local config
+RUN echo "VITE_API_URL=" > .env.production
+
 # Build the application
 RUN npm run build
 
