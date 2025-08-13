@@ -18,6 +18,13 @@ class RewardCreate(BaseModel):
     cost: int
 
 
+class RewardUpdate(BaseModel):
+    name: str = None
+    description: str = None
+    cost: int = None
+    is_active: bool = None
+
+
 class RewardResponse(BaseModel):
     id: int
     name: str
@@ -47,6 +54,23 @@ async def get_rewards(
     current_user: User = Depends(get_current_user)
 ):
     statement = select(Reward).where(Reward.is_active == True)
+    rewards = session.exec(statement).all()
+    return rewards
+
+
+@router.get("/admin/all", response_model=List[RewardResponse])
+async def get_all_rewards_admin(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can view all rewards"
+        )
+
+    # Return all rewards (active and inactive) for admin management
+    statement = select(Reward)
     rewards = session.exec(statement).all()
     return rewards
 
@@ -82,18 +106,49 @@ async def update_reward(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can update rewards"
         )
-    
+
     reward = session.get(Reward, reward_id)
     if not reward:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Reward not found"
         )
-    
+
     # Update reward fields
     for field, value in reward_data.dict().items():
         setattr(reward, field, value)
-    
+
+    session.add(reward)
+    session.commit()
+    session.refresh(reward)
+    return reward
+
+
+@router.patch("/{reward_id}", response_model=RewardResponse)
+async def patch_reward(
+    reward_id: int,
+    reward_data: RewardUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can update rewards"
+        )
+
+    reward = session.get(Reward, reward_id)
+    if not reward:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reward not found"
+        )
+
+    # Update only provided fields
+    update_data = reward_data.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(reward, field, value)
+
     session.add(reward)
     session.commit()
     session.refresh(reward)

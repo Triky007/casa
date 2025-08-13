@@ -218,7 +218,7 @@ async def update_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can update users"
         )
-    
+
     # Get user to update
     user = session.get(User, user_id)
     if not user:
@@ -226,17 +226,54 @@ async def update_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     # Update user fields
     update_data = user_update.dict(exclude_unset=True)
-    
+
     # Hash password if provided
     if "password" in update_data:
         update_data["password_hash"] = get_password_hash(update_data.pop("password"))
-    
+
     for field, value in update_data.items():
         setattr(user, field, value)
-    
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+@router.patch("/{user_id}", response_model=UserResponse)
+async def patch_user(
+    user_id: int,
+    user_update: UserUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can update users"
+        )
+
+    # Get user to update
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Update user fields
+    update_data = user_update.dict(exclude_unset=True)
+
+    # Hash password if provided
+    if "password" in update_data:
+        update_data["password_hash"] = get_password_hash(update_data.pop("password"))
+
+    for field, value in update_data.items():
+        setattr(user, field, value)
+
     session.add(user)
     session.commit()
     session.refresh(user)

@@ -5,7 +5,7 @@ from datetime import datetime
 from ..core.database import get_session
 from ..models.user import User, UserRole
 from ..models.task import Task, TaskAssignment, TaskStatus
-from ..schemas.task import TaskCreate, TaskResponse, TaskAssignmentResponse, TaskAssignmentUpdate
+from ..schemas.task import TaskCreate, TaskResponse, TaskAssignmentResponse, TaskAssignmentUpdate, TaskUpdate
 from .auth import get_current_user
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -49,18 +49,49 @@ async def update_task(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can update tasks"
         )
-    
+
     task = session.get(Task, task_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
-    
+
     # Update task fields
     for field, value in task_data.dict().items():
         setattr(task, field, value)
-    
+
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+
+@router.patch("/{task_id}", response_model=TaskResponse)
+async def patch_task(
+    task_id: int,
+    task_data: TaskUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can update tasks"
+        )
+
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+
+    # Update only provided fields
+    update_data = task_data.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(task, field, value)
+
     session.add(task)
     session.commit()
     session.refresh(task)

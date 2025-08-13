@@ -12,6 +12,15 @@ class TaskCreate(BaseModel):
     periodicity: TaskPeriodicity = TaskPeriodicity.DAILY
 
 
+class TaskUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    credits: Optional[int] = None
+    task_type: Optional[TaskType] = None
+    periodicity: Optional[TaskPeriodicity] = None
+    is_active: Optional[bool] = None
+
+
 class TaskResponse(BaseModel):
     id: int
     name: str

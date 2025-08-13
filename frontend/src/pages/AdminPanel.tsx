@@ -28,7 +28,7 @@ const AdminPanel: React.FC = () => {
       const [usersResponse, tasksResponse, rewardsResponse] = await Promise.all([
         api.get('/api/users/'),
         api.get('/api/tasks/'),
-        api.get('/api/rewards/')
+        api.get('/api/rewards/admin/all')
       ]);
 
       setAllUsers(usersResponse.data);

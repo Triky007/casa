@@ -24,7 +24,7 @@ export default function AdminRewardsScreen() {
 
   const loadRewards = async () => {
     try {
-      const response = await api.get('/api/rewards/');
+      const response = await api.get('/api/rewards/admin/all');
       setRewards(response.data);
     } catch (error) {
       console.error('Error loading rewards:', error);
@@ -124,31 +124,50 @@ export default function AdminRewardsScreen() {
             Creada: {new Date(reward.created_at).toLocaleDateString('es-ES')}
           </Text>
 
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              {
-                backgroundColor: reward.is_active ? '#FEE2E2' : '#DCFCE7',
-              },
-            ]}
-            onPress={() => toggleRewardStatus(reward.id, reward.is_active)}
-          >
-            <Ionicons
-              name={reward.is_active ? 'close-circle' : 'checkmark-circle'}
-              size={16}
-              color={reward.is_active ? '#EF4444' : '#10B981'}
-            />
-            <Text
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
               style={[
-                styles.actionButtonText,
+                styles.actionButton,
                 {
-                  color: reward.is_active ? '#EF4444' : '#10B981',
+                  backgroundColor: reward.is_active ? '#FEE2E2' : '#DCFCE7',
                 },
               ]}
+              onPress={() => toggleRewardStatus(reward.id, reward.is_active)}
             >
-              {reward.is_active ? 'Desactivar' : 'Activar'}
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name={reward.is_active ? 'close-circle' : 'checkmark-circle'}
+                size={16}
+                color={reward.is_active ? '#EF4444' : '#10B981'}
+              />
+              <Text
+                style={[
+                  styles.actionButtonText,
+                  {
+                    color: reward.is_active ? '#EF4444' : '#10B981',
+                  },
+                ]}
+              >
+                {reward.is_active ? 'Desactivar' : 'Activar'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.deleteButton,
+              ]}
+              onPress={() => deleteReward(reward.id)}
+            >
+              <Ionicons
+                name="trash"
+                size={16}
+                color="#EF4444"
+              />
+              <Text style={styles.deleteButtonText}>
+                Eliminar
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -267,6 +286,11 @@ const styles = StyleSheet.create({
   createdDate: {
     fontSize: 12,
     color: '#9CA3AF',
+    flex: 1,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8,
   },
   actionButton: {
     flexDirection: 'row',
@@ -279,6 +303,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
+  },
+  deleteButton: {
+    backgroundColor: '#FEE2E2',
+  },
+  deleteButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+    color: '#EF4444',
   },
   emptyContainer: {
     alignItems: 'center',

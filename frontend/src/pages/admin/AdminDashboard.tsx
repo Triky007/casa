@@ -40,7 +40,7 @@ const AdminDashboard: React.FC = () => {
       // Obtener datos base
       const [usersResponse, rewardsResponse, statsResponse] = await Promise.all([
         api.get('/api/users/'),
-        api.get('/api/rewards/'),
+        api.get('/api/rewards/admin/all'),
         api.get('/api/tasks/stats/daily', { params })
       ]);
 

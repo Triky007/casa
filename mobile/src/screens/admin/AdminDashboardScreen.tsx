@@ -99,7 +99,7 @@ export default function AdminDashboardScreen() {
 
       try {
         console.log('Loading rewards...');
-        const rewardsResponse = await api.get('/api/rewards/');
+        const rewardsResponse = await api.get('/api/rewards/admin/all');
         rewards = rewardsResponse.data;
         console.log('Rewards loaded:', rewards.length);
       } catch (error) {

@@ -32,10 +32,10 @@ const AdminRewards: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await api.get('/api/rewards/');
+      const response = await api.get('/api/rewards/admin/all');
       setRewards(response.data);
       setFilteredRewards(response.data);
-      
+
       // Extraer categorías únicas
       const uniqueCategories = [...new Set(response.data.map((reward: ExtendedReward) => reward.category || 'Sin categoría'))];
       setCategories(uniqueCategories as string[]);
