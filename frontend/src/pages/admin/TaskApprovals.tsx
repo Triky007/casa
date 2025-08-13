@@ -507,7 +507,7 @@ const TaskApprovals: React.FC = () => {
                               {selectedSubmission.photos.map((photo, index) => (
                                 <div key={photo.id} className="relative">
                                   <img
-                                    src={`http://localhost:3110${photo.thumbnail_path || photo.file_path}`}
+                                    src={photo.thumbnail_path || photo.file_path}
                                     alt={`Foto ${index + 1}`}
                                     className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
                                     onClick={() => handleShowPhotos(selectedSubmission.photos!)}

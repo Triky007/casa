@@ -33,7 +33,7 @@ export const PhotoViewer: React.FC<PhotoViewerProps> = ({
 
         <div className="photo-viewer-main">
           <img
-            src={`http://localhost:3110${selectedPhoto.file_path}`}
+            src={selectedPhoto.file_path}
             alt={selectedPhoto.original_filename}
             className="main-photo"
           />
@@ -48,11 +48,7 @@ export const PhotoViewer: React.FC<PhotoViewerProps> = ({
                 onClick={() => setSelectedPhotoIndex(index)}
               >
                 <img
-                  src={
-                    photo.thumbnail_path
-                      ? `http://localhost:3110${photo.thumbnail_path}`
-                      : `http://localhost:3110${photo.file_path}`
-                  }
+                  src={photo.thumbnail_path || photo.file_path}
                   alt={photo.original_filename}
                 />
               </button>
