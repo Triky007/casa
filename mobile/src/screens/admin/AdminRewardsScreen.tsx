@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Reward } from '../../types';
 import api from '../../utils/api';
 import {
-  AdminHeader,
+  CreateButton,
   ActionButtons,
   AdminModal,
   RewardForm,
@@ -232,8 +232,7 @@ export default function AdminRewardsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AdminHeader
-        title="Gestión de Recompensas"
+      <CreateButton
         onCreatePress={openCreateModal}
       />
 

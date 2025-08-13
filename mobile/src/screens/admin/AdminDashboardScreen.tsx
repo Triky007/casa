@@ -162,23 +162,7 @@ export default function AdminDashboardScreen() {
     setRefreshing(false);
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: logout,
-        },
-      ]
-    );
-  };
+
 
   if (isLoading) {
     return (
@@ -199,13 +183,6 @@ export default function AdminDashboardScreen() {
         }
       >
         <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.welcomeText}>Panel de Administración</Text>
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-              <Text style={styles.logoutText}>Salir</Text>
-            </TouchableOpacity>
-          </View>
 
           {stats && (
             <View style={styles.statsContainer}>
@@ -293,32 +270,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  welcomeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    flex: 1,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#FEE2E2',
-  },
-  logoutText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
-    marginLeft: 4,
-  },
+
   statsContainer: {
     marginBottom: 32,
   },

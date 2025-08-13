@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { User } from '../../types';
 import api from '../../utils/api';
 import {
-  AdminHeader,
+  CreateButton,
   ActionButtons,
   AdminModal,
   UserForm,
@@ -249,8 +249,7 @@ export default function AdminUsersScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AdminHeader
-        title="Gestión de Usuarios"
+      <CreateButton
         onCreatePress={openCreateModal}
       />
 

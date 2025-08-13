@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Task } from '../../types';
 import api from '../../utils/api';
 import {
-  AdminHeader,
+  CreateButton,
   ActionButtons,
   AdminModal,
   TaskForm,
@@ -285,8 +285,7 @@ export default function AdminTasksScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AdminHeader
-        title="Gestión de Tareas"
+      <CreateButton
         onCreatePress={openCreateModal}
       />
 

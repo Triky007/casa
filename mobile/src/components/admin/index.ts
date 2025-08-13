@@ -1,4 +1,5 @@
 export { default as AdminHeader } from './AdminHeader';
+export { default as CreateButton } from './CreateButton';
 export { default as ActionButtons } from './ActionButtons';
 export { default as AdminModal } from './AdminModal';
 export { default as FormField } from './FormField';
