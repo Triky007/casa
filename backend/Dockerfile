@@ -21,7 +21,7 @@ RUN useradd --create-home --shell /bin/bash app \
 USER app
 
 # Expose port
-EXPOSE 3100
+EXPOSE 3110
 
 # Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3100"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3110"]
