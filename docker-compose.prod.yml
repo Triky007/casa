@@ -48,7 +48,7 @@ services:
     depends_on:
       - backend
     environment:
-      VITE_API_URL: /api
+      VITE_API_URL: ""
     restart: unless-stopped
     networks:
       - family-tasks-network

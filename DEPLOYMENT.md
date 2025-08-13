@@ -17,9 +17,10 @@
 - **CORS**: Incluye `localhost` y `127.0.0.1`
 
 ### Producción (Apache + HTTPS)
-- **URL API**: `/api` (relativa, proxy por Apache)
+- **URL API**: `` (vacía, usa rutas absolutas como `/api/user/login`)
 - **Cookies**: `SameSite=None`, `Secure=True`
 - **CORS**: Solo dominios HTTPS específicos
+- **Apache**: `/api/` → Backend (3110), `/` → Frontend (4110)
 
 ## 📦 Despliegue
 
@@ -56,14 +57,19 @@ deploy-production.bat
 ### Error: `localhost:3100` en producción
 - ✅ **Solucionado**: Configuración separada para desarrollo/producción
 
+### Error: `/api/api/user/login` (URL duplicada)
+- ✅ **Solucionado**: VITE_API_URL vacía en producción, Apache proxy configurado
+
 ### Cookies no se guardan
 - ✅ **Solucionado**: `withCredentials: true`, `SameSite` correcto según entorno
 
 ## 📋 Checklist Post-Despliegue
 
-- [ ] Apache configurado y funcionando
+- [ ] Copiar `apache-config/family-triky-app.conf` a Apache
+- [ ] Recargar Apache: `sudo systemctl reload apache2`
 - [ ] Certificados SSL válidos
 - [ ] Servicios Docker corriendo (`docker-compose ps`)
+- [ ] Verificar proxy: `/api/` → Backend, `/` → Frontend
 - [ ] Login funciona con bloqueadores activados
 - [ ] Cookies se establecen correctamente
-- [ ] API responde en `/api/user/login`
+- [ ] API responde en `/api/user/login` (sin duplicación)
