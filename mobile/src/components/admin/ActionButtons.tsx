@@ -25,9 +25,10 @@ export default function ActionButtons({
       <TouchableOpacity
         style={[styles.actionButton, styles.editButton]}
         onPress={onEdit}
+        accessibilityLabel="Editar"
+        accessibilityHint="Toca para editar este elemento"
       >
-        <Ionicons name="create" size={14} color="#3B82F6" />
-        <Text style={styles.editButtonText}>Editar</Text>
+        <Ionicons name="create" size={18} color="#3B82F6" />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -38,30 +39,23 @@ export default function ActionButtons({
           },
         ]}
         onPress={onToggleStatus}
+        accessibilityLabel={isActive ? statusText.active : statusText.inactive}
+        accessibilityHint={`Toca para ${isActive ? statusText.active.toLowerCase() : statusText.inactive.toLowerCase()} este elemento`}
       >
         <Ionicons
           name={isActive ? 'close-circle' : 'checkmark-circle'}
-          size={14}
+          size={18}
           color={isActive ? '#EF4444' : '#10B981'}
         />
-        <Text
-          style={[
-            styles.actionButtonText,
-            {
-              color: isActive ? '#EF4444' : '#10B981',
-            },
-          ]}
-        >
-          {isActive ? statusText.active : statusText.inactive}
-        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.actionButton, styles.deleteButton]}
         onPress={onDelete}
+        accessibilityLabel="Eliminar"
+        accessibilityHint="Toca para eliminar este elemento"
       >
-        <Ionicons name="trash" size={14} color="#EF4444" />
-        <Text style={styles.deleteButtonText}>Eliminar</Text>
+        <Ionicons name="trash" size={18} color="#EF4444" />
       </TouchableOpacity>
     </View>
   );
@@ -70,37 +64,29 @@ export default function ActionButtons({
 const styles = StyleSheet.create({
   actionButtonsContainer: {
     flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   actionButton: {
-    flexDirection: 'row',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  actionButtonText: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginLeft: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   editButton: {
     backgroundColor: '#DBEAFE',
   },
-  editButtonText: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginLeft: 2,
-    color: '#3B82F6',
-  },
   deleteButton: {
     backgroundColor: '#FEE2E2',
-  },
-  deleteButtonText: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginLeft: 2,
-    color: '#EF4444',
   },
 });

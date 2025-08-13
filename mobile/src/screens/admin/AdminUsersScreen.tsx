@@ -221,16 +221,18 @@ export default function AdminUsersScreen() {
           </View>
         </View>
 
-        <ActionButtons
-          onEdit={() => openEditModal(user)}
-          onToggleStatus={() => toggleUserStatus(user.id, user.is_active)}
-          onDelete={() => deleteUser(user.id)}
-          isActive={user.is_active}
-          statusText={{
-            active: 'Desactivar',
-            inactive: 'Activar',
-          }}
-        />
+        <View style={styles.userFooter}>
+          <ActionButtons
+            onEdit={() => openEditModal(user)}
+            onToggleStatus={() => toggleUserStatus(user.id, user.is_active)}
+            onDelete={() => deleteUser(user.id)}
+            isActive={user.is_active}
+            statusText={{
+              active: 'Desactivar',
+              inactive: 'Activar',
+            }}
+          />
+        </View>
       </View>
     );
   };
@@ -364,6 +366,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginLeft: 4,
+  },
+  userFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 8,
   },
 
   emptyContainer: {
