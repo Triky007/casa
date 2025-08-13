@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       formData.append('password', password);
 
       console.log('Sending login request...');
-      const response = await api.post('/api/user/validate', formData, {
+      const response = await api.post('/api/user/login', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

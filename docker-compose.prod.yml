@@ -21,8 +21,8 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:Masketu.123@db:5432/family_tasks
       SECRET_KEY: your-secret-key-change-in-production-please
-      ALLOWED_ORIGINS: http://localhost:4110,http://family.triky.app,https://family.triky.app,https://api.family.triky.app
-      ENVIRONMENT: development
+      ALLOWED_ORIGINS: https://family.triky.app,https://api.family.triky.app
+      ENVIRONMENT: production
     ports:
       - "3110:3110"
     depends_on:

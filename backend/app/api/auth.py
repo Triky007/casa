@@ -3,13 +3,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from typing import Optional
+import os
 from ..core.database import get_session
 from ..core.security import verify_password, get_password_hash, create_access_token, verify_token
 from ..models.user import User
 from ..schemas.auth import Token, UserLogin, UserCreate, UserResponse
 
 router = APIRouter(prefix="/api/user", tags=["user"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/validate")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login")
 
 
 async def get_current_user(
@@ -48,7 +49,7 @@ async def get_current_user(
     return user
 
 
-@router.post("/validate", response_model=Token)
+@router.post("/login", response_model=Token)
 async def login(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -67,12 +68,15 @@ async def login(
     access_token = create_access_token(data={"sub": user.username})
 
     # Set secure HTTP-only cookie
+    # Use different settings for development vs production
+    is_production = os.getenv("ENVIRONMENT", "development") == "production"
+
     response.set_cookie(
         key="auth_token",
         value=access_token,
         httponly=True,
-        secure=True,  # Only over HTTPS
-        samesite="none",  # Allow cross-site requests
+        secure=is_production,  # Only secure in HTTPS (production)
+        samesite="none" if is_production else "lax",  # None for production, Lax for development
         max_age=1800,  # 30 minutes (same as token expiry)
         path="/"
     )
@@ -113,10 +117,12 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 @router.post("/logout")
 async def logout(response: Response):
     """Logout user by clearing the auth cookie"""
+    is_production = os.getenv("ENVIRONMENT", "development") == "production"
+
     response.delete_cookie(
         key="auth_token",
         path="/",
-        secure=True,
-        samesite="none"
+        secure=is_production,
+        samesite="none" if is_production else "lax"
     )
     return {"message": "Successfully logged out"}

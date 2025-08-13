@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await api.post('/api/user/validate', formData);
+      const response = await api.post('/api/user/login', formData);
       const { access_token } = response.data;
 
       setToken(access_token);
