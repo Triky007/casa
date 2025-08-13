@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔧 Solucionando problema de localhost después del build..."
+echo "🔧 Auto-corrección de localhost después del build..."
 
 # Esperar a que el contenedor esté listo
 echo "⏳ Esperando a que el frontend esté listo..."
