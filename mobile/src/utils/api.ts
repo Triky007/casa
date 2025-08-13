@@ -5,17 +5,17 @@ import { Platform } from 'react-native';
 // Configuración automática de la URL del backend
 const getApiUrl = () => {
   // Para producción
-  // return 'https://tu-backend-url.com';
+  // return 'https://api.family.triky.app';
 
   // Para desarrollo
   if (Platform.OS === 'web') {
     // En web usa localhost
     return 'http://localhost:3100';
   } else {
-    // En dispositivos móviles - Usar la IP real de la red
+    // En dispositivos móviles - Usar IP principal de la red
     return 'http://192.168.9.101:3100';
 
-    // IPs alternativas si la principal no funciona:
+    // IPs alternativas si no funciona:
     // return 'http://192.168.248.1:3100';  // VMware adapter
     // return 'http://10.2.0.2:3100';       // ProtonVPN
   }

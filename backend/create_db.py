@@ -65,15 +65,15 @@ def create_database_and_user():
         cursor = conn.cursor()
         
         # Check if user exists
-        cursor.execute("SELECT 1 FROM pg_roles WHERE rolname='user'")
+        cursor.execute("SELECT 1 FROM pg_roles WHERE rolname='family_user'")
         user_exists = cursor.fetchone()
-        
+
         if not user_exists:
-            print("Creating user 'user'...")
-            cursor.execute("CREATE USER \"user\" WITH PASSWORD 'password';")
-            print("✅ User 'user' created successfully!")
+            print("Creating user 'family_user'...")
+            cursor.execute("CREATE USER family_user WITH PASSWORD 'secure_password';")
+            print("✅ User 'family_user' created successfully!")
         else:
-            print("ℹ️  User 'user' already exists.")
+            print("ℹ️  User 'family_user' already exists.")
         
         # Check if database exists
         cursor.execute("SELECT 1 FROM pg_database WHERE datname='family_tasks'")
@@ -81,7 +81,7 @@ def create_database_and_user():
         
         if not db_exists:
             print("Creating database 'family_tasks'...")
-            cursor.execute("CREATE DATABASE family_tasks OWNER \"user\";")
+            cursor.execute("CREATE DATABASE family_tasks OWNER family_user;")
             print("✅ Database 'family_tasks' created successfully!")
         else:
             print("ℹ️  Database 'family_tasks' already exists.")
@@ -101,15 +101,15 @@ def create_database_and_user():
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cursor = conn.cursor()
         
-        cursor.execute("GRANT ALL ON SCHEMA public TO \"user\";")
-        cursor.execute("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"user\";")
-        cursor.execute("GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO \"user\";")
-        cursor.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO \"user\";")
-        cursor.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO \"user\";")
-        
+        cursor.execute("GRANT ALL ON SCHEMA public TO family_user;")
+        cursor.execute("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO family_user;")
+        cursor.execute("GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO family_user;")
+        cursor.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO family_user;")
+        cursor.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO family_user;")
+
         cursor.close()
         conn.close()
-        
+
         print("✅ All permissions granted successfully!")
         print("\n🎉 Database setup completed!")
         print("You can now start the FastAPI server.")

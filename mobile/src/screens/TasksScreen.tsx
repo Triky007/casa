@@ -10,13 +10,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { TaskAssignment } from '../types';
+import { TaskAssignment, Task } from '../types';
 import api from '../utils/api';
 
 export default function TasksScreen() {
-  const [tasks, setTasks] = useState<TaskAssignment[]>([]);
+  const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'assigned' | 'available'>('assigned');
 
   useEffect(() => {
     loadTasks();
@@ -24,10 +26,25 @@ export default function TasksScreen() {
 
   const loadTasks = async () => {
     try {
-      console.log('Loading user tasks...');
-      const response = await api.get('/api/tasks/assignments');
-      console.log('User tasks loaded:', response.data.length);
-      setTasks(response.data);
+      console.log('Loading tasks...');
+      const [assignmentsResponse, allTasksResponse] = await Promise.all([
+        api.get('/api/tasks/assignments'),
+        api.get('/api/tasks/')
+      ]);
+
+      console.log('Assignments loaded:', assignmentsResponse.data.length);
+      console.log('All tasks loaded:', allTasksResponse.data.length);
+
+      setAssignments(assignmentsResponse.data);
+
+      // Filtrar tareas disponibles (no asignadas al usuario actual)
+      const assignedTaskIds = assignmentsResponse.data.map((a: TaskAssignment) => a.task_id);
+      const available = allTasksResponse.data.filter((task: Task) =>
+        !assignedTaskIds.includes(task.id)
+      );
+
+      setAvailableTasks(available);
+      console.log('Available tasks:', available.length);
     } catch (error) {
       console.error('Error loading tasks:', error);
       Alert.alert('Error', 'No se pudieron cargar las tareas');
@@ -42,10 +59,22 @@ export default function TasksScreen() {
     setRefreshing(false);
   };
 
-  const completeTask = async (taskId: number) => {
+  const assignTask = async (taskId: number) => {
     try {
-      console.log('Completing task:', taskId);
-      await api.patch(`/api/tasks/complete/${taskId}`);
+      console.log('Assigning task:', taskId);
+      await api.post(`/api/tasks/assign/${taskId}`);
+      await loadTasks(); // Reload tasks
+      Alert.alert('¡Éxito!', 'Tarea asignada correctamente');
+    } catch (error) {
+      console.error('Error assigning task:', error);
+      Alert.alert('Error', 'No se pudo asignar la tarea');
+    }
+  };
+
+  const completeTask = async (assignmentId: number) => {
+    try {
+      console.log('Completing task:', assignmentId);
+      await api.patch(`/api/tasks/complete/${assignmentId}`);
       await loadTasks(); // Reload tasks
       Alert.alert('¡Éxito!', 'Tarea marcada como completada');
     } catch (error) {
@@ -55,7 +84,7 @@ export default function TasksScreen() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'pending':
         return '#F59E0B';
       case 'completed':
@@ -70,9 +99,9 @@ export default function TasksScreen() {
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'pending':
-        return 'Pendiente';
+        return 'Asignada';
       case 'completed':
         return 'Completada';
       case 'approved':
@@ -97,9 +126,9 @@ export default function TasksScreen() {
     }
   };
 
-  const renderTaskCard = (assignment: TaskAssignment) => {
-    const canComplete = assignment.status === 'pending';
-    
+  const renderAssignmentCard = (assignment: TaskAssignment) => {
+    const canComplete = assignment.status.toLowerCase() === 'pending';
+
     return (
       <View key={assignment.id} style={styles.taskCard}>
         <View style={styles.taskHeader}>
@@ -155,6 +184,56 @@ export default function TasksScreen() {
     );
   };
 
+  const renderAvailableTaskCard = (task: Task) => {
+    return (
+      <View key={task.id} style={styles.taskCard}>
+        <View style={styles.taskHeader}>
+          <Text style={styles.taskName}>{task.name}</Text>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: '#10B981' + '20' },
+            ]}
+          >
+            <Text
+              style={[
+                styles.statusText,
+                { color: '#10B981' },
+              ]}
+            >
+              Disponible
+            </Text>
+          </View>
+        </View>
+
+        {task.description && (
+          <Text style={styles.taskDescription}>
+            {task.description}
+          </Text>
+        )}
+
+        <View style={styles.taskFooter}>
+          <View style={styles.taskInfo}>
+            <Text style={styles.taskCredits}>
+              {task.credits} créditos
+            </Text>
+            <Text style={styles.taskPeriodicity}>
+              {getPeriodicityText(task.periodicity || '')}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.assignButton}
+            onPress={() => assignTask(task.id)}
+          >
+            <Ionicons name="add" size={16} color="#FFFFFF" />
+            <Text style={styles.assignButtonText}>Asignarme</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -168,7 +247,27 @@ export default function TasksScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Mis Tareas</Text>
+        <Text style={styles.title}>Tareas</Text>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'assigned' && styles.activeTab]}
+          onPress={() => setActiveTab('assigned')}
+        >
+          <Text style={[styles.tabText, activeTab === 'assigned' && styles.activeTabText]}>
+            Mis Tareas ({assignments.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'available' && styles.activeTab]}
+          onPress={() => setActiveTab('available')}
+        >
+          <Text style={[styles.tabText, activeTab === 'available' && styles.activeTabText]}>
+            Disponibles ({availableTasks.length})
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -178,13 +277,24 @@ export default function TasksScreen() {
         }
       >
         <View style={styles.content}>
-          {tasks.length > 0 ? (
-            tasks.map(renderTaskCard)
+          {activeTab === 'assigned' ? (
+            assignments.length > 0 ? (
+              assignments.map(renderAssignmentCard)
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="checkbox-outline" size={64} color="#D1D5DB" />
+                <Text style={styles.emptyText}>No tienes tareas asignadas</Text>
+              </View>
+            )
           ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="checkbox-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No tienes tareas asignadas</Text>
-            </View>
+            availableTasks.length > 0 ? (
+              availableTasks.map(renderAvailableTaskCard)
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="checkmark-done-outline" size={64} color="#D1D5DB" />
+                <Text style={styles.emptyText}>No hay tareas disponibles</Text>
+              </View>
+            )
           )}
         </View>
       </ScrollView>
@@ -298,6 +408,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 4,
+  },
+  assignButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  assignButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  activeTab: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  activeTabText: {
+    color: '#1F2937',
+    fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',

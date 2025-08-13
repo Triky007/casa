@@ -1,12 +1,32 @@
 services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: family_tasks
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Masketu.123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U family_user -d family_tasks"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - family-tasks-network
+
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: sqlite:///./family_tasks.db
+      DATABASE_URL: postgresql://postgres:Masketu.123@db:5432/family_tasks
       SECRET_KEY: your-secret-key-change-in-production-please
       ALLOWED_ORIGINS: http://localhost:4100,http://family.triky.app,https://family.triky.app,https://api.family.triky.app
     ports:
-      - "127.0.0.1:3100:3100"
+      - "3100:3100"
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - ./backend:/app
       - ./data:/app/data
@@ -17,6 +37,8 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    networks:
+      - family-tasks-network
 
   frontend:
     build: ./frontend
@@ -25,7 +47,14 @@ services:
     depends_on:
       - backend
     environment:
-      VITE_API_URL: https://family.triky.app
+      VITE_API_URL: https://api.family.triky.app
     restart: unless-stopped
+    networks:
+      - family-tasks-network
 
+volumes:
+  postgres_data:
 
+networks:
+  family-tasks-network:
+    external: true
