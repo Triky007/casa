@@ -23,6 +23,20 @@ sleep 10
 echo "✅ Estado de los servicios:"
 docker-compose -f docker-compose.prod.yml ps
 
+# Verificar salud de los servicios
+echo ""
+echo "🏥 Verificando salud de los servicios..."
+sleep 5
+./check-health.sh
+
+echo ""
+echo "🔍 Para ver las llamadas de login en tiempo real, ejecuta:"
+echo "   docker-compose -f docker-compose.prod.yml logs -f backend | grep -E '(POST|login|validate|Response)'"
+echo ""
+echo "📋 Ejemplo de llamada de login exitosa:"
+echo "   POST /api/user/login - Origin: https://family.triky.app"
+echo "   Response: 200"
+
 echo "🎉 Despliegue completado!"
 echo "📝 Próximos pasos:"
 echo "   1. Copiar apache-config/family-triky-app.conf a Apache"

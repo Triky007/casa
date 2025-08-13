@@ -22,6 +22,14 @@ REM Verificar estado de los servicios
 echo ✅ Estado de los servicios:
 docker-compose -f docker-compose.prod.yml ps
 
+echo.
+echo 🔍 Para ver las llamadas de login en tiempo real, ejecuta:
+echo    monitor-login.bat
+echo.
+echo 📋 Ejemplo de llamada de login exitosa:
+echo    POST /api/user/login - Origin: https://family.triky.app
+echo    Response: 200
+echo.
 echo 🎉 Despliegue completado!
 echo 📝 Próximos pasos:
 echo    1. Copiar apache-config/family-triky-app.conf a Apache

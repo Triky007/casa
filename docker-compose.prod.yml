@@ -44,7 +44,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "127.0.0.1:4110:80"
+      - "4110:80"
     depends_on:
       - backend
     environment:
