@@ -10,8 +10,6 @@ COPY package*.json ./
 RUN npm ci
 
 # Copy source code (excluding .env files)
-COPY package*.json ./
-COPY public ./public
 COPY src ./src
 COPY index.html ./
 COPY vite.config.ts ./
@@ -28,7 +26,7 @@ ENV VITE_API_URL=""
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine as production-stage
+FROM nginx:alpine AS production-stage
 COPY --from=0 /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
