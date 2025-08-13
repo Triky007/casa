@@ -9,8 +9,16 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code
-COPY . .
+# Copy source code (excluding .env files)
+COPY package*.json ./
+COPY public ./public
+COPY src ./src
+COPY index.html ./
+COPY vite.config.ts ./
+COPY tsconfig.json ./
+COPY tsconfig.node.json ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
 
 # Set environment for production build
 ENV NODE_ENV=production
