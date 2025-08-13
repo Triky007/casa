@@ -1,14 +1,44 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlmodel import Session, select
 from datetime import datetime
+import os
 from ..core.database import get_session
 from ..models.user import User, UserRole
 from ..models.task import Task, TaskAssignment, TaskStatus
+from ..models.task_completion_photo import TaskCompletionPhoto
 from ..schemas.task import TaskCreate, TaskResponse, TaskAssignmentResponse, TaskAssignmentUpdate, TaskUpdate
+from ..schemas.photo import TaskCompletionPhotoResponse
+from ..utils.file_handler import save_uploaded_file, create_thumbnail, delete_photo_files
 from .auth import get_current_user
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
+
+
+def build_assignment_response(assignment: TaskAssignment, session: Session) -> TaskAssignmentResponse:
+    """Helper function to build TaskAssignmentResponse with photos and task data"""
+    # Get task data
+    task = session.get(Task, assignment.task_id)
+
+    # Get user data
+    user = session.get(User, assignment.user_id)
+
+    # Get photos
+    photos_statement = select(TaskCompletionPhoto).where(
+        TaskCompletionPhoto.task_assignment_id == assignment.id
+    )
+    photos = session.exec(photos_statement).all()
+
+    # Build response
+    assignment_dict = assignment.dict()
+    assignment_dict['task'] = task.dict() if task else None
+    assignment_dict['user'] = {
+        'id': user.id,
+        'username': user.username
+    } if user else None
+    assignment_dict['photos'] = [photo.dict() for photo in photos] if photos else []
+
+    return TaskAssignmentResponse(**assignment_dict)
 
 
 @router.get("/", response_model=List[TaskResponse])
@@ -208,13 +238,10 @@ async def get_user_assignments(
 
     assignments = session.exec(statement).all()
 
-    # Create response objects with task data
+    # Create response objects with task data and photos
     response_assignments = []
     for assignment in assignments:
-        task = session.get(Task, assignment.task_id)
-        assignment_dict = assignment.dict()
-        assignment_dict['task'] = task.dict() if task else None
-        response_assignments.append(TaskAssignmentResponse(**assignment_dict))
+        response_assignments.append(build_assignment_response(assignment, session))
 
     return response_assignments
 
@@ -250,18 +277,10 @@ async def get_all_assignments(
 
     assignments = session.exec(statement).all()
 
-    # Create response objects with task and user data
+    # Create response objects with task, user data and photos
     response_assignments = []
     for assignment in assignments:
-        task = session.get(Task, assignment.task_id)
-        user = session.get(User, assignment.user_id)
-        assignment_dict = assignment.dict()
-        assignment_dict['task'] = task.dict() if task else None
-        assignment_dict['user'] = {
-            'id': user.id,
-            'username': user.username
-        } if user else None
-        response_assignments.append(TaskAssignmentResponse(**assignment_dict))
+        response_assignments.append(build_assignment_response(assignment, session))
 
     return response_assignments
 
@@ -296,7 +315,83 @@ async def complete_task(
     session.add(assignment)
     session.commit()
     session.refresh(assignment)
-    return assignment
+    return build_assignment_response(assignment, session)
+
+
+@router.post("/complete-with-photo/{assignment_id}", response_model=TaskAssignmentResponse)
+async def complete_task_with_photo(
+    assignment_id: int,
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """Completar tarea subiendo una foto como evidencia"""
+
+    assignment = session.get(TaskAssignment, assignment_id)
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found"
+        )
+
+    if assignment.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Can only complete your own tasks"
+        )
+
+    if assignment.status != TaskStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Task is not in pending status"
+        )
+
+    try:
+        # Marcar tarea como completada
+        assignment.status = TaskStatus.COMPLETED
+        assignment.completed_at = datetime.utcnow()
+        session.add(assignment)
+        session.commit()
+        session.refresh(assignment)
+
+        # Guardar foto
+        filename, web_path, file_size = await save_uploaded_file(file)
+
+        # Crear thumbnail (necesitamos la ruta del sistema para crear el thumbnail)
+        full_path = os.path.join("uploads/task-photos", filename)
+        thumbnail_web_path = create_thumbnail(full_path, filename)
+
+        # Guardar foto en base de datos
+        photo = TaskCompletionPhoto(
+            task_assignment_id=assignment_id,
+            filename=filename,
+            original_filename=file.filename,
+            file_path=web_path,  # Ruta web relativa
+            thumbnail_path=thumbnail_web_path,  # Ruta web del thumbnail
+            file_size=file_size,
+            mime_type=file.content_type
+        )
+
+        session.add(photo)
+        session.commit()
+
+        return build_assignment_response(assignment, session)
+
+    except Exception as e:
+        # Si algo sale mal con la foto, revertir el estado de la tarea
+        assignment.status = TaskStatus.PENDING
+        assignment.completed_at = None
+        session.add(assignment)
+        session.commit()
+
+        # Limpiar archivos si se crearon
+        if 'web_path' in locals():
+            delete_photo_files(web_path, thumbnail_web_path if 'thumbnail_web_path' in locals() else None)
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error completing task with photo: {str(e)}"
+        )
 
 
 @router.patch("/approve/{assignment_id}", response_model=TaskAssignmentResponse)
@@ -425,16 +520,31 @@ async def reset_all_tasks(
             detail="Only administrators can reset tasks"
         )
 
-    # Delete all task assignments to make tasks available again
-    statement = select(TaskAssignment)
-    assignments = session.exec(statement).all()
+    # First, delete all photos associated with task assignments
+    photos_statement = select(TaskCompletionPhoto)
+    photos = session.exec(photos_statement).all()
+
+    # Delete photo files from filesystem
+    for photo in photos:
+        try:
+            delete_photo_files(photo.file_path, photo.thumbnail_path)
+        except Exception as e:
+            print(f"Warning: Could not delete photo files for photo {photo.id}: {e}")
+
+    # Delete photo records from database
+    for photo in photos:
+        session.delete(photo)
+
+    # Then delete all task assignments
+    assignments_statement = select(TaskAssignment)
+    assignments = session.exec(assignments_statement).all()
 
     for assignment in assignments:
         session.delete(assignment)
 
     session.commit()
 
-    return {"message": f"Successfully reset {len(assignments)} task assignments"}
+    return {"message": f"Successfully reset {len(assignments)} task assignments and deleted {len(photos)} photos"}
 
 
 @router.get("/stats/daily")

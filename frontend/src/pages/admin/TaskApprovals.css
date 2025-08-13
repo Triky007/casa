@@ -1,0 +1,212 @@
+/* Estilos específicos para TaskApprovals */
+
+.photo-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: #dbeafe;
+  color: #1e40af;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.photo-badge:hover {
+  background-color: #bfdbfe;
+}
+
+.photo-badge-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-right: 0.25rem;
+}
+
+.no-photos-text {
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.action-button {
+  padding: 0.5rem;
+  border-radius: 9999px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-button:hover {
+  transform: scale(1.05);
+}
+
+.approve-button {
+  color: #059669;
+  background-color: #d1fae5;
+}
+
+.approve-button:hover {
+  color: #047857;
+  background-color: #a7f3d0;
+}
+
+.reject-button {
+  color: #dc2626;
+  background-color: #fee2e2;
+}
+
+.reject-button:hover {
+  color: #b91c1c;
+  background-color: #fecaca;
+}
+
+.details-button {
+  color: #6b7280;
+  background-color: #f3f4f6;
+}
+
+.details-button:hover {
+  color: #4b5563;
+  background-color: #e5e7eb;
+}
+
+/* Estilos para fotos en modal de detalles */
+.photo-thumbnail {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.photo-thumbnail:hover {
+  opacity: 0.8;
+  border-color: #3b82f6;
+  transform: scale(1.05);
+}
+
+.photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.view-photos-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  margin-top: 8px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: #dbeafe;
+  color: #1e40af;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.view-photos-button:hover {
+  background-color: #bfdbfe;
+}
+
+.view-photos-button svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-right: 0.25rem;
+}
+
+/* Estilos mejorados para el modal de detalles */
+.task-details-modal {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.task-details-section {
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.task-details-section:last-child {
+  border-bottom: none;
+}
+
+.task-details-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.task-details-value {
+  font-size: 1rem;
+  color: #111827;
+  line-height: 1.5;
+}
+
+.task-details-value.muted {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.evidence-photo-text {
+  color: #059669;
+  font-weight: 500;
+}
+
+.modal-actions {
+  background: linear-gradient(to right, #f9fafb, #ffffff);
+  border-top: 1px solid #e5e7eb;
+  padding: 16px 24px;
+}
+
+.action-button-modal {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+}
+
+.action-button-modal:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.approve-modal {
+  background-color: #10b981;
+  color: white;
+}
+
+.approve-modal:hover {
+  background-color: #059669;
+}
+
+.reject-modal {
+  background-color: #ef4444;
+  color: white;
+}
+
+.reject-modal:hover {
+  background-color: #dc2626;
+}
+
+.close-modal {
+  background-color: #6b7280;
+  color: white;
+}
+
+.close-modal:hover {
+  background-color: #4b5563;
+}

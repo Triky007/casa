@@ -17,6 +17,18 @@ export interface Task {
   created_at: string;
 }
 
+export interface TaskCompletionPhoto {
+  id: number;
+  task_assignment_id: number;
+  filename: string;
+  original_filename: string;
+  file_path: string;
+  thumbnail_path?: string;
+  file_size: number;
+  mime_type: string;
+  uploaded_at: string;
+}
+
 export interface TaskAssignment {
   id: number;
   task_id: number;
@@ -32,6 +44,16 @@ export interface TaskAssignment {
     id: number;
     username: string;
   };
+  photos?: TaskCompletionPhoto[];
+}
+
+export interface PhotoUploadResponse {
+  message: string;
+  photo_id: number;
+  filename: string;
+  file_size: number;
+  thumbnail_url?: string;
+  photo_url: string;
 }
 
 export interface Reward {

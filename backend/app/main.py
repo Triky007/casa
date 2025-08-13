@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .core.config import settings
 from .core.database import create_db_and_tables
-from .api import auth, tasks, users, rewards
+from .api import auth, tasks, users, rewards, photos
+from .utils.file_handler import ensure_upload_directories
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -47,11 +50,17 @@ app.include_router(auth.router)
 app.include_router(tasks.router)
 app.include_router(users.router)
 app.include_router(rewards.router)
+app.include_router(photos.router)
+
+# Mount static files for serving uploaded images
+ensure_upload_directories()
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+    ensure_upload_directories()
 
 
 @app.get("/")

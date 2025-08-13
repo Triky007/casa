@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, date
 from ..models.task import TaskType, TaskStatus, TaskPeriodicity
 
@@ -52,10 +52,16 @@ class TaskAssignmentResponse(BaseModel):
     created_at: datetime
     task: Optional[TaskResponse] = None
     user: Optional[UserBasicInfo] = None
-    
+    photos: Optional[List["TaskCompletionPhotoResponse"]] = None
+
     class Config:
         from_attributes = True
 
 
 class TaskAssignmentUpdate(BaseModel):
     status: TaskStatus
+
+
+# Import after class definition to avoid circular imports
+from .photo import TaskCompletionPhotoResponse
+TaskAssignmentResponse.model_rebuild()

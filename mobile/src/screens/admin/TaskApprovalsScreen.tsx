@@ -12,11 +12,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskAssignment } from '../../types';
 import api from '../../utils/api';
+import { TaskPhotoViewer } from '../../components/TaskPhotoViewer';
 
 export default function TaskApprovalsScreen() {
   const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<TaskAssignment | null>(null);
 
   useEffect(() => {
     loadPendingApprovals();
@@ -130,6 +133,21 @@ export default function TaskApprovalsScreen() {
           </Text>
         )}
 
+        {assignment.photos && assignment.photos.length > 0 && (
+          <TouchableOpacity
+            style={styles.photoButton}
+            onPress={() => {
+              setSelectedAssignment(assignment);
+              setShowPhotoViewer(true);
+            }}
+          >
+            <Ionicons name="camera" size={16} color="#007AFF" />
+            <Text style={styles.photoButtonText}>
+              Ver fotos ({assignment.photos.length})
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.actionButtons}>
           <TouchableOpacity
             style={[styles.actionButton, styles.rejectButton]}
@@ -182,6 +200,16 @@ export default function TaskApprovalsScreen() {
           )}
         </View>
       </ScrollView>
+
+      <TaskPhotoViewer
+        visible={showPhotoViewer}
+        photos={selectedAssignment?.photos || []}
+        onClose={() => {
+          setShowPhotoViewer(false);
+          setSelectedAssignment(null);
+        }}
+        baseUrl={api.defaults.baseURL || 'http://192.168.9.101:3110'}
+      />
     </SafeAreaView>
   );
 }
@@ -281,6 +309,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+    marginLeft: 4,
+  },
+  photoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 6,
+    marginVertical: 8,
+  },
+  photoButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '500',
     marginLeft: 4,
   },
   emptyContainer: {

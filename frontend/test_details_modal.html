@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Modal de Detalles con Fotos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .photo-thumbnail {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .photo-thumbnail:hover {
+            opacity: 0.8;
+            border-color: #3b82f6;
+            transform: scale(1.05);
+        }
+        .photo-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .view-photos-button {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            margin-top: 8px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            background-color: #dbeafe;
+            color: #1e40af;
+            transition: background-color 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+        .view-photos-button:hover {
+            background-color: #bfdbfe;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">Preview: Modal de Detalles con Fotos</h1>
+
+        <!-- Simulación del modal de detalles -->
+        <div class="bg-white rounded-lg shadow-xl p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                Detalles de la Tarea
+            </h3>
+
+            <div class="space-y-4">
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500">Tarea</h4>
+                    <p class="text-base">Limpiar mi habitación</p>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500">Usuario</h4>
+                    <p class="text-base">Juan Pérez</p>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500">Fecha de Envío</h4>
+                    <p class="text-base">13/08/2025, 20:30</p>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500">Evidencia</h4>
+                    <p class="text-base">Habitación completamente limpia y ordenada</p>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500">Comentarios</h4>
+                    <p class="text-base">Tarea completada con éxito</p>
+                </div>
+
+                <!-- Sección de fotos -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-500">Fotos Adjuntas</h4>
+                    <div class="mt-2">
+                        <div class="photo-grid">
+                            <div class="relative">
+                                <div class="photo-thumbnail bg-gray-200 flex items-center justify-center">
+                                    <i class="fas fa-image text-gray-400 text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="relative">
+                                <div class="photo-thumbnail bg-gray-200 flex items-center justify-center">
+                                    <i class="fas fa-image text-gray-400 text-2xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="view-photos-button">
+                            <i class="fas fa-camera mr-1"></i>
+                            Ver todas las fotos (2)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="mt-6 flex justify-end space-x-3">
+                <button class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                    Aprobar
+                </button>
+                <button class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                    Rechazar
+                </button>
+                <button class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

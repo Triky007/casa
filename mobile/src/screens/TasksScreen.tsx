@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { TaskAssignment, Task } from '../types';
+import { TaskAssignment, Task, PhotoUploadResponse } from '../types';
 import api from '../utils/api';
+import { PhotoCapture } from '../components/PhotoCapture';
 
 export default function TasksScreen() {
   const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
@@ -19,6 +20,9 @@ export default function TasksScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'assigned' | 'available'>('assigned');
+  const [showPhotoCapture, setShowPhotoCapture] = useState(false);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     loadTasks();
@@ -72,8 +76,32 @@ export default function TasksScreen() {
   };
 
   const completeTask = async (assignmentId: number) => {
+    Alert.alert(
+      'Completar Tarea',
+      '¿Cómo quieres completar esta tarea?',
+      [
+        {
+          text: 'Sin foto',
+          onPress: () => completeTaskWithoutPhoto(assignmentId),
+        },
+        {
+          text: 'Con foto',
+          onPress: () => {
+            setSelectedAssignmentId(assignmentId);
+            setShowPhotoCapture(true);
+          },
+        },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const completeTaskWithoutPhoto = async (assignmentId: number) => {
     try {
-      console.log('Completing task:', assignmentId);
+      console.log('Completing task without photo:', assignmentId);
       await api.patch(`/api/tasks/complete/${assignmentId}`);
       await loadTasks(); // Reload tasks
       Alert.alert('¡Éxito!', 'Tarea marcada como completada');
@@ -81,6 +109,44 @@ export default function TasksScreen() {
       console.error('Error completing task:', error);
       Alert.alert('Error', 'No se pudo completar la tarea');
     }
+  };
+
+  const completeTaskWithPhoto = async (photoUri: string) => {
+    if (!selectedAssignmentId) return;
+
+    setIsUploading(true);
+    try {
+      console.log('Completing task with photo:', selectedAssignmentId);
+
+      // Crear FormData para enviar la foto
+      const formData = new FormData();
+      formData.append('file', {
+        uri: photoUri,
+        type: 'image/jpeg',
+        name: `task_${selectedAssignmentId}_${Date.now()}.jpg`,
+      } as any);
+
+      await api.post(`/api/tasks/complete-with-photo/${selectedAssignmentId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      await loadTasks(); // Reload tasks
+      setShowPhotoCapture(false);
+      setSelectedAssignmentId(null);
+      Alert.alert('¡Éxito!', 'Tarea completada con foto');
+    } catch (error) {
+      console.error('Error completing task with photo:', error);
+      Alert.alert('Error', 'No se pudo completar la tarea con foto');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handlePhotoCaptureCancel = () => {
+    setShowPhotoCapture(false);
+    setSelectedAssignmentId(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -298,6 +364,13 @@ export default function TasksScreen() {
           )}
         </View>
       </ScrollView>
+
+      <PhotoCapture
+        visible={showPhotoCapture}
+        onPhotoSelected={completeTaskWithPhoto}
+        onCancel={handlePhotoCaptureCancel}
+        isUploading={isUploading}
+      />
     </SafeAreaView>
   );
 }
