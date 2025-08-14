@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .core.config import settings
 from .core.database import create_db_and_tables
-from .api import auth, tasks, users, rewards, photos
+from .api import auth, tasks_crud, tasks_management, tasks_admin, users, rewards, photos
 from .utils.file_handler import ensure_upload_directories
 import logging
 import os
@@ -47,7 +47,9 @@ async def log_requests(request: Request, call_next):
 
 # Include routers
 app.include_router(auth.router)
-app.include_router(tasks.router)
+app.include_router(tasks_crud.router)
+app.include_router(tasks_management.router)
+app.include_router(tasks_admin.router)
 app.include_router(users.router)
 app.include_router(rewards.router)
 app.include_router(photos.router)

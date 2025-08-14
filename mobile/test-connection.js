@@ -5,10 +5,10 @@
 
 const axios = require('axios');
 
-const API_URL = 'https://api.family.triky.app';
+const API_URL = 'http://192.168.9.101:3110';
 
 async function testConnection() {
-  console.log('🧪 Probando conectividad con servidor externo...');
+  console.log('🧪 Probando conectividad con servidor local...');
   console.log(`📡 URL: ${API_URL}`);
   
   try {

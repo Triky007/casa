@@ -19,7 +19,7 @@ export const ENVIRONMENTS = {
 };
 
 // Cambiar aquí para alternar entre entornos
-export const CURRENT_ENVIRONMENT = 'production'; // 'development' | 'production'
+export const CURRENT_ENVIRONMENT = 'development'; // 'development' | 'production'
 
 // Configuración activa
 export const config = ENVIRONMENTS[CURRENT_ENVIRONMENT as keyof typeof ENVIRONMENTS];
