@@ -7,6 +7,8 @@ services:
       POSTGRES_PASSWORD: Masketu.123
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d family_tasks"]
       interval: 10s
