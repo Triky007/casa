@@ -39,8 +39,15 @@ api.interceptors.response.use(
       message: error.message,
       status: error.response?.status,
       url: error.config?.url,
-      baseURL: error.config?.baseURL
+      baseURL: error.config?.baseURL,
+      data: error.response?.data,
+      stack: error.stack
     });
+
+    // Log adicional para desarrollo
+    if (__DEV__) {
+      console.log('🔍 Full error object:', error);
+    }
 
     if (error.response?.status === 401) {
       try {
