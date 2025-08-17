@@ -15,3 +15,9 @@
 
 # Specific to this project
 /logs/
+
+# Uploaded files - don't commit user uploaded photos
+/uploads/
+/backend/uploads/
+uploads/task-photos/
+**/uploads/task-photos/
