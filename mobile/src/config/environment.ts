@@ -28,7 +28,7 @@ export const ENVIRONMENTS = {
   },
   production: {
     name: 'production',
-    apiUrl: 'https://tu-servidor-apache.com/api', // CAMBIAR POR TU URL REAL
+    apiUrl: 'https://api.family.triky.app',
     timeout: 30000,
     debug: false
   }
