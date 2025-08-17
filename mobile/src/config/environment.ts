@@ -28,14 +28,14 @@ export const ENVIRONMENTS = {
   },
   production: {
     name: 'production',
-    apiUrl: 'https://api.family.triky.app',
+    apiUrl: 'https://tu-servidor-apache.com/api', // CAMBIAR POR TU URL REAL
     timeout: 30000,
     debug: false
   }
 };
 
 // Cambiar aquí para alternar entre entornos
-export const CURRENT_ENVIRONMENT = 'development'; // 'development' | 'production'
+export const CURRENT_ENVIRONMENT = 'production'; // 'development' | 'production'
 
 // Configuración activa
 export const config = ENVIRONMENTS[CURRENT_ENVIRONMENT as keyof typeof ENVIRONMENTS];
