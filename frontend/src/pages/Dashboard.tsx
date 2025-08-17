@@ -6,7 +6,7 @@ import api from '../utils/api';
 import { BarChart3, CheckCircle, Clock, XCircle, Coins, TrendingUp } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, family } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recentAssignments, setRecentAssignments] = useState<TaskAssignment[]>([]);
@@ -70,8 +70,28 @@ const Dashboard: React.FC = () => {
           ¡Hola, {user?.username}!
         </h1>
         <p className="text-gray-600">
-          {user?.role === 'admin' ? 'Panel de administración' : 'Aquí tienes tu resumen de tareas'}
+          {user?.role === 'superadmin'
+            ? 'Panel de superadministrador'
+            : user?.role === 'admin'
+            ? 'Panel de administración'
+            : 'Aquí tienes tu resumen de tareas'}
         </p>
+        {family && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">{family.name.charAt(0)}</span>
+              </div>
+              <div>
+                <h3 className="font-medium text-blue-900">{family.name}</h3>
+                {family.description && (
+                  <p className="text-sm text-blue-700">{family.description}</p>
+                )}
+                <p className="text-xs text-blue-600">Zona horaria: {family.timezone}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}

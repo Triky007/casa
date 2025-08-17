@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthContextType } from '../types';
+import { User, AuthContextType, FamilyBasicInfo, LoginResponse } from '../types';
 import api from '../utils/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,16 +18,22 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [family, setFamily] = useState<FamilyBasicInfo | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
+    const storedFamily = localStorage.getItem('family');
 
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
+      if (storedFamily) {
+        setFamily(JSON.parse(storedFamily));
+      }
+
       // Verify token is still valid
       api.get('/api/user/me')
         .then(response => {
@@ -45,23 +51,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, familyId?: number) => {
     try {
-      const formData = new FormData();
-      formData.append('username', username);
-      formData.append('password', password);
+      // Siempre usar el endpoint con familia (más moderno y completo)
+      console.log('Using login-with-family endpoint for user:', username, 'family:', familyId || 'none (superadmin)');
+      const response = await api.post('/api/user/login-with-family', {
+        username,
+        password,
+        family_id: familyId || null  // null para superadmin, número para usuarios regulares
+      });
 
-      const response = await api.post('/api/user/login', formData);
-      const { access_token } = response.data;
+      const loginData: LoginResponse = response.data;
 
-      setToken(access_token);
-      localStorage.setItem('token', access_token);
+      setToken(loginData.access_token);
+      setUser(loginData.user);
+      setFamily(loginData.family || null);
 
-      // Get user info
-      const userResponse = await api.get('/api/user/me');
-      setUser(userResponse.data);
-      localStorage.setItem('user', JSON.stringify(userResponse.data));
-    } catch (error) {
+      localStorage.setItem('token', loginData.access_token);
+      localStorage.setItem('user', JSON.stringify(loginData.user));
+      if (loginData.family) {
+        localStorage.setItem('family', JSON.stringify(loginData.family));
+        console.log('Login successful with family:', loginData.family.name);
+      } else {
+        localStorage.removeItem('family');
+        console.log('Login successful without family (superadmin)');
+      }
+    } catch (error: any) {
+      console.error('Login error:', error.response?.data || error.message);
+
+      // Mejorar mensajes de error
+      if (error.response?.status === 403) {
+        throw new Error('No tienes permisos para acceder a esta familia');
+      } else if (error.response?.status === 400 && error.response?.data?.detail?.includes('Family')) {
+        throw new Error('Debes seleccionar una familia válida');
+      } else if (error.response?.status === 401) {
+        throw new Error('Usuario o contraseña incorrectos');
+      }
+
       throw error;
     }
   };
@@ -75,14 +101,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       // Clear local state regardless of API call result
       setUser(null);
+      setFamily(null);
       setToken(null);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('family');
     }
   };
 
   const value: AuthContextType = {
     user,
+    family,
     token,
     login,
     logout,

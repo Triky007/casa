@@ -19,7 +19,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUserChange }) 
     username: '',
     password: '',
     role: 'user' as 'user' | 'admin',
-    credits: 0
+    credits: 0,
+    full_name: '',
+    email: ''
   });
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -30,7 +32,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUserChange }) 
         username: '',
         password: '',
         role: 'user',
-        credits: 0
+        credits: 0,
+        full_name: '',
+        email: ''
       });
       setShowAddUser(false);
       onUserChange(); // Refresh user list
@@ -104,7 +108,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUserChange }) 
             <div key={u.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
               <div>
                 <p className="font-medium text-gray-900">{u.username}</p>
-                <p className="text-sm text-gray-600 capitalize">{u.role}</p>
+                {u.full_name && (
+                  <p className="text-sm text-gray-500">{u.full_name}</p>
+                )}
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm text-gray-600 capitalize">{u.role}</p>
+                  {u.email && (
+                    <span className="text-xs text-gray-400">• {u.email}</span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="text-right mr-2">
@@ -177,6 +189,32 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUserChange }) 
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre completo <span className="text-gray-400">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={newUser.full_name}
+                  onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nombre completo del usuario"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email <span className="text-gray-400">(opcional)</span>
+                </label>
+                <input
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="correo@ejemplo.com"
                 />
               </div>
 

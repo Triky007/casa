@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { User, AuthContextType } from '../types';
+import { User, AuthContextType, FamilyBasicInfo, LoginResponse } from '../types';
 import api from '../utils/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +19,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [family, setFamily] = useState<FamilyBasicInfo | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -30,10 +31,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const storedToken = await SecureStore.getItemAsync('token');
       const storedUser = await SecureStore.getItemAsync('user');
+      const storedFamily = await SecureStore.getItemAsync('family');
 
       if (storedToken && storedUser) {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
+        if (storedFamily) {
+          setFamily(JSON.parse(storedFamily));
+        }
 
         // Verify token is still valid
         try {
@@ -52,33 +57,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, familyId?: number) => {
     try {
-      console.log('Attempting login with:', { username, baseURL: api.defaults.baseURL });
+      console.log('Attempting login with:', { username, familyId, baseURL: api.defaults.baseURL });
 
-      const formData = new FormData();
-      formData.append('username', username);
-      formData.append('password', password);
+      let response;
 
-      console.log('Sending login request...');
-      const response = await api.post('/api/user/login', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      if (familyId !== undefined) {
+        // Usar el nuevo endpoint con familia
+        console.log('Using login-with-family endpoint...');
+        response = await api.post('/api/user/login-with-family', {
+          username,
+          password,
+          family_id: familyId
+        });
+      } else {
+        // Usar el endpoint tradicional (para compatibilidad)
+        console.log('Using traditional login endpoint...');
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+
+        response = await api.post('/api/user/login', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
 
       console.log('Login response received:', response.status);
-      const { access_token } = response.data;
+      const loginData: LoginResponse = response.data;
 
-      setToken(access_token);
-      await SecureStore.setItemAsync('token', access_token);
+      setToken(loginData.access_token);
+      setUser(loginData.user);
+      setFamily(loginData.family || null);
 
-      // Get user info
-      const userResponse = await api.get('/api/user/me');
-      setUser(userResponse.data);
-      await SecureStore.setItemAsync('user', JSON.stringify(userResponse.data));
+      await SecureStore.setItemAsync('token', loginData.access_token);
+      await SecureStore.setItemAsync('user', JSON.stringify(loginData.user));
+      if (loginData.family) {
+        await SecureStore.setItemAsync('family', JSON.stringify(loginData.family));
+      } else {
+        await SecureStore.deleteItemAsync('family');
+      }
 
-      console.log('Login successful for user:', userResponse.data.username);
+      console.log('Login successful for user:', loginData.user.username, 'Family:', loginData.family?.name || 'None');
     } catch (error: any) {
       console.error('Login failed:', {
         message: error.message,
@@ -93,9 +115,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       setUser(null);
+      setFamily(null);
       setToken(null);
       await SecureStore.deleteItemAsync('token');
       await SecureStore.deleteItemAsync('user');
+      await SecureStore.deleteItemAsync('family');
     } catch (error) {
       console.error('Error during logout:', error);
     }
@@ -103,6 +127,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     user,
+    family,
     token,
     login,
     logout,

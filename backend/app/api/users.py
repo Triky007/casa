@@ -12,6 +12,35 @@ from ..core.security import get_password_hash, verify_password
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
+def validate_family_access(current_user: User, target_user: User = None, target_family_id: int = None):
+    """Validar que el usuario tenga acceso a la familia especificada"""
+    # Superadmins tienen acceso a todo
+    if current_user.role == UserRole.SUPERADMIN:
+        return True
+
+    # Determinar la familia objetivo
+    family_id = target_family_id if target_family_id is not None else (target_user.family_id if target_user else None)
+
+    # Usuarios deben pertenecer a la misma familia
+    if current_user.family_id != family_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes acceso a datos de otras familias"
+        )
+
+    return True
+
+
+def require_admin_or_superadmin(current_user: User = Depends(get_current_user)):
+    """Middleware para requerir permisos de admin o superadmin"""
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requieren permisos de administrador"
+        )
+    return current_user
+
+
 @router.post("/{user_id}/change-password", status_code=status.HTTP_200_OK)
 async def change_user_password(
     user_id: int,
@@ -19,15 +48,24 @@ async def change_user_password(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    # Verificar si el usuario tiene permisos para cambiar esta contraseña
-    # Los administradores pueden cambiar cualquier contraseña, los usuarios solo la suya
-    if current_user.role != UserRole.ADMIN and current_user.id != user_id:
+    # Obtener el usuario cuya contraseña se va a cambiar
+    target_user = session.get(User, user_id)
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado"
+        )
+
+    # Validar acceso a la familia
+    validate_family_access(current_user, target_user)
+
+    # Verificar permisos específicos
+    # Los administradores pueden cambiar contraseñas de su familia, los usuarios solo la suya
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN] and current_user.id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para cambiar esta contraseña"
         )
-
-    # Obtener el usuario cuya contraseña se va a cambiar
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(
@@ -90,19 +128,22 @@ async def get_user_stats(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    # Users can only see their own stats, admins can see anyone's
-    if current_user.role != UserRole.ADMIN and current_user.id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Can only view your own statistics"
-        )
-    
     # Check if user exists
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
+        )
+
+    # Validar acceso a la familia
+    validate_family_access(current_user, user)
+
+    # Users can only see their own stats, admins can see stats of their family
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN] and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Can only view your own statistics"
         )
     
     # Calculate statistics
@@ -155,16 +196,15 @@ async def get_user_stats(
 @router.get("/", response_model=List[UserResponse])
 async def get_all_users(
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only administrators can view all users"
-        )
-    
-    # Mostrar todos los usuarios, incluso inactivos, para que el admin pueda gestionarlos
-    statement = select(User)
+    # Superadmins ven todos los usuarios, admins solo de su familia
+    if current_user.role == UserRole.SUPERADMIN:
+        statement = select(User)
+    else:
+        # Admins solo ven usuarios de su familia
+        statement = select(User).where(User.family_id == current_user.family_id)
+
     users = session.exec(statement).all()
     return users
 
@@ -173,14 +213,18 @@ async def get_all_users(
 async def create_user(
     user_create: UserCreate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only administrators can create users"
-        )
-    
+    # Validar familia si se especifica
+    target_family_id = user_create.family_id
+    if target_family_id is None and current_user.role == UserRole.ADMIN:
+        # Si es admin y no especifica familia, usar la suya
+        target_family_id = current_user.family_id
+
+    # Validar acceso a la familia
+    if target_family_id is not None:
+        validate_family_access(current_user, target_family_id=target_family_id)
+
     # Check if username already exists
     existing_user = session.exec(select(User).where(User.username == user_create.username)).first()
     if existing_user:
@@ -188,15 +232,18 @@ async def create_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already exists"
         )
-    
+
     # Create new user
     password_hash = get_password_hash(user_create.password)
-    
+
     new_user = User(
         username=user_create.username,
         password_hash=password_hash,
         role=user_create.role,
         credits=user_create.credits if user_create.credits is not None else 0,
+        family_id=target_family_id,
+        full_name=user_create.full_name,
+        email=user_create.email,
         is_active=True
     )
     
@@ -211,14 +258,8 @@ async def update_user(
     user_id: int,
     user_update: UserUpdate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only administrators can update users"
-        )
-
     # Get user to update
     user = session.get(User, user_id)
     if not user:
@@ -226,6 +267,9 @@ async def update_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
+
+    # Validar acceso a la familia
+    validate_family_access(current_user, user)
 
     # Update user fields
     update_data = user_update.dict(exclude_unset=True)
@@ -248,14 +292,8 @@ async def patch_user(
     user_id: int,
     user_update: UserUpdate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only administrators can update users"
-        )
-
     # Get user to update
     user = session.get(User, user_id)
     if not user:
@@ -263,6 +301,9 @@ async def patch_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
+
+    # Validar acceso a la familia
+    validate_family_access(current_user, user)
 
     # Update user fields
     update_data = user_update.dict(exclude_unset=True)
@@ -284,21 +325,15 @@ async def patch_user(
 async def delete_user(
     user_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_admin_or_superadmin)
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only administrators can delete users"
-        )
-    
     # Prevent self-deletion
     if user_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete your own account"
         )
-    
+
     # Get user to delete
     user = session.get(User, user_id)
     if not user:
@@ -306,7 +341,10 @@ async def delete_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
+    # Validar acceso a la familia
+    validate_family_access(current_user, user)
+
     # Delete user
     session.delete(user)
     session.commit()

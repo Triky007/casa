@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,16 +12,28 @@ from .auth import get_current_user
 router = APIRouter(prefix="/api/rewards", tags=["rewards"])
 
 
+def require_admin_or_superadmin(current_user: User = Depends(get_current_user)):
+    """Middleware para requerir permisos de admin o superadmin"""
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requieren permisos de administrador"
+        )
+    return current_user
+
+
 class RewardCreate(BaseModel):
     name: str
     description: str = None
     cost: int
+    family_id: Optional[int] = None
 
 
 class RewardUpdate(BaseModel):
     name: str = None
     description: str = None
     cost: int = None
+    family_id: Optional[int] = None
     is_active: bool = None
 
 
@@ -30,6 +42,7 @@ class RewardResponse(BaseModel):
     name: str
     description: str = None
     cost: int
+    family_id: Optional[int] = None
     is_active: bool
     created_at: datetime
     
@@ -53,7 +66,17 @@ async def get_rewards(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    statement = select(Reward).where(Reward.is_active == True)
+    """Obtener recompensas activas - filtradas por familia"""
+    if current_user.role == UserRole.SUPERADMIN:
+        # Superadmins ven todas las recompensas
+        statement = select(Reward).where(Reward.is_active == True)
+    else:
+        # Usuarios y admins solo ven recompensas de su familia
+        statement = select(Reward).where(
+            Reward.is_active == True,
+            Reward.family_id == current_user.family_id
+        )
+
     rewards = session.exec(statement).all()
     return rewards
 
@@ -63,14 +86,20 @@ async def get_all_rewards_admin(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can view all rewards"
         )
 
-    # Return all rewards (active and inactive) for admin management
-    statement = select(Reward)
+    # Return rewards filtered by family for admins
+    if current_user.role == UserRole.SUPERADMIN:
+        # Superadmins ven todas las recompensas
+        statement = select(Reward)
+    else:
+        # Admins solo ven recompensas de su familia
+        statement = select(Reward).where(Reward.family_id == current_user.family_id)
+
     rewards = session.exec(statement).all()
     return rewards
 
@@ -81,13 +110,19 @@ async def create_reward(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can create rewards"
         )
     
-    reward = Reward(**reward_data.dict())
+    reward_dict = reward_data.dict()
+
+    # Asignar familia automáticamente si no se especifica
+    if reward_dict.get('family_id') is None and current_user.role == UserRole.ADMIN:
+        reward_dict['family_id'] = current_user.family_id
+
+    reward = Reward(**reward_dict)
     session.add(reward)
     session.commit()
     session.refresh(reward)
@@ -101,7 +136,7 @@ async def update_reward(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can update rewards"
@@ -113,6 +148,14 @@ async def update_reward(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Reward not found"
         )
+
+    # Validar acceso a la recompensa
+    if current_user.role != UserRole.SUPERADMIN:
+        if reward.family_id != current_user.family_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes acceso a esta recompensa"
+            )
 
     # Update only provided fields
     update_data = reward_data.dict(exclude_unset=True)
@@ -132,7 +175,7 @@ async def patch_reward(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can update rewards"
@@ -144,6 +187,14 @@ async def patch_reward(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Reward not found"
         )
+
+    # Validar acceso a la recompensa
+    if current_user.role != UserRole.SUPERADMIN:
+        if reward.family_id != current_user.family_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes acceso a esta recompensa"
+            )
 
     # Update only provided fields
     update_data = reward_data.dict(exclude_unset=True)
@@ -162,7 +213,7 @@ async def delete_reward(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can delete rewards"
@@ -174,6 +225,14 @@ async def delete_reward(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Reward not found"
         )
+
+    # Validar acceso a la recompensa
+    if current_user.role != UserRole.SUPERADMIN:
+        if reward.family_id != current_user.family_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes acceso a esta recompensa"
+            )
 
     # Check if reward has been redeemed
     redemptions_statement = select(RewardRedemption).where(RewardRedemption.reward_id == reward_id)
@@ -203,7 +262,14 @@ async def redeem_reward(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Reward not found"
         )
-    
+
+    # Validar que la recompensa pertenezca a la familia del usuario
+    if reward.family_id != current_user.family_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta recompensa no está disponible para tu familia"
+        )
+
     # Check if user has enough credits
     if current_user.credits < reward.cost:
         raise HTTPException(

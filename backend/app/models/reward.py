@@ -8,6 +8,7 @@ class Reward(SQLModel, table=True):
     name: str
     description: Optional[str] = None
     cost: int  # Credits required to redeem
+    family_id: Optional[int] = Field(default=None, foreign_key="family.id", index=True)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

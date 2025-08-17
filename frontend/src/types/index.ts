@@ -1,9 +1,38 @@
 export interface User {
   id: number;
   username: string;
-  role: 'admin' | 'user';
+  role: 'superadmin' | 'admin' | 'user';
   credits: number;
   is_active: boolean;
+  family_id?: number;
+  full_name?: string;
+  email?: string;
+  created_at: string;
+}
+
+export interface Family {
+  id: number;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  created_by?: number;
+  max_members: number;
+  timezone: string;
+}
+
+export interface FamilyBasicInfo {
+  id: number;
+  name: string;
+  description?: string;
+  timezone: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+  family?: FamilyBasicInfo;
 }
 
 export interface Task {
@@ -83,8 +112,9 @@ export interface UserStats {
 
 export interface AuthContextType {
   user: User | null;
+  family: FamilyBasicInfo | null;
   token: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, familyId?: number) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }

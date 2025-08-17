@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .core.config import settings
 from .core.database import create_db_and_tables
-from .api import auth, tasks_crud, tasks_management, tasks_admin, users, rewards, photos
+from .api import auth, tasks_crud, tasks_management, tasks_admin, users, rewards, photos, families
 from .utils.file_handler import ensure_upload_directories
 import logging
 import os
@@ -26,17 +26,28 @@ app.add_middleware(
         "http://family.triky.app",
         "http://localhost:4110",
         "http://localhost:5173",
-        "http://127.0.0.1:4110"
+        "http://127.0.0.1:4110",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",  # React dev server
+        "http://127.0.0.1:3000"   # React dev server
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    allow_methods=["*"],  # Permitir todos los métodos
+    allow_headers=["*"],  # Permitir todos los headers
     expose_headers=["*"],
 )
 
-# Debug middleware for mobile requests
+# Debug middleware for CORS and requests
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    # Log CORS-related info
+    origin = request.headers.get("origin", "")
+    method = request.method
+    path = request.url.path
+
+    if method == "OPTIONS" or "families" in path:
+        print(f"🔍 CORS Debug - Method: {method}, Path: {path}, Origin: {origin}")
+
     user_agent = request.headers.get("user-agent", "")
     origin = request.headers.get("origin", "")
     logger.info(f"Request: {request.method} {request.url} - Origin: {origin} - User-Agent: {user_agent[:50]}...")
@@ -47,6 +58,7 @@ async def log_requests(request: Request, call_next):
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(families.router)
 app.include_router(tasks_crud.router)
 app.include_router(tasks_management.router)
 app.include_router(tasks_admin.router)

@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TaskAssignment, Task, PhotoUploadResponse } from '../types';
 import api from '../utils/api';
+import { TaskPhotoViewer } from '../components/TaskPhotoViewer';
 import { PhotoCapture } from '../components/PhotoCapture';
 
 export default function TasksScreen() {
@@ -19,6 +20,8 @@ export default function TasksScreen() {
   const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<TaskAssignment | null>(null);
   const [activeTab, setActiveTab] = useState<'assigned' | 'available'>('assigned');
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
@@ -38,6 +41,13 @@ export default function TasksScreen() {
 
       console.log('Assignments loaded:', assignmentsResponse.data.length);
       console.log('All tasks loaded:', allTasksResponse.data.length);
+
+      // Debug: Log assignments with photos
+      assignmentsResponse.data.forEach((assignment: TaskAssignment) => {
+        if (assignment.photos && assignment.photos.length > 0) {
+          console.log(`📸 Assignment ${assignment.id} has ${assignment.photos.length} photos:`, assignment.photos);
+        }
+      });
 
       setAssignments(assignmentsResponse.data);
 
@@ -236,15 +246,32 @@ export default function TasksScreen() {
             </Text>
           </View>
 
-          {canComplete && (
-            <TouchableOpacity
-              style={styles.completeButton}
-              onPress={() => completeTask(assignment.id)}
-            >
-              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-              <Text style={styles.completeButtonText}>Completar</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.taskActions}>
+            {canComplete && (
+              <TouchableOpacity
+                style={styles.completeButton}
+                onPress={() => completeTask(assignment.id)}
+              >
+                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                <Text style={styles.completeButtonText}>Completar</Text>
+              </TouchableOpacity>
+            )}
+
+            {assignment.photos && assignment.photos.length > 0 && (
+              <TouchableOpacity
+                style={styles.photoButton}
+                onPress={() => {
+                  setSelectedAssignment(assignment);
+                  setShowPhotoViewer(true);
+                }}
+              >
+                <Ionicons name="camera" size={16} color="#007AFF" />
+                <Text style={styles.photoButtonText}>
+                  Ver fotos ({assignment.photos.length})
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -370,6 +397,16 @@ export default function TasksScreen() {
         onPhotoSelected={completeTaskWithPhoto}
         onCancel={handlePhotoCaptureCancel}
         isUploading={isUploading}
+      />
+
+      <TaskPhotoViewer
+        visible={showPhotoViewer}
+        photos={selectedAssignment?.photos || []}
+        onClose={() => {
+          setShowPhotoViewer(false);
+          setSelectedAssignment(null);
+        }}
+        baseUrl={api.defaults.baseURL || 'http://192.168.9.101:3110'}
       />
     </SafeAreaView>
   );
@@ -541,5 +578,25 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 16,
     textAlign: 'center',
+  },
+  taskActions: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  photoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EBF8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  photoButtonText: {
+    color: '#007AFF',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
   },
 });

@@ -10,6 +10,7 @@ class TaskCreate(BaseModel):
     credits: int
     task_type: TaskType = TaskType.INDIVIDUAL
     periodicity: TaskPeriodicity = TaskPeriodicity.DAILY
+    family_id: Optional[int] = None
 
 
 class TaskUpdate(BaseModel):
@@ -18,6 +19,7 @@ class TaskUpdate(BaseModel):
     credits: Optional[int] = None
     task_type: Optional[TaskType] = None
     periodicity: Optional[TaskPeriodicity] = None
+    family_id: Optional[int] = None
     is_active: Optional[bool] = None
 
 
@@ -28,6 +30,7 @@ class TaskResponse(BaseModel):
     credits: int
     task_type: TaskType
     periodicity: TaskPeriodicity
+    family_id: Optional[int]
     is_active: bool
     created_at: datetime
     

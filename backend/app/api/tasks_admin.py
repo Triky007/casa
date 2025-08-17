@@ -120,14 +120,23 @@ async def get_pending_approvals(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """Obtener tareas pendientes de aprobación - solo administradores"""
-    if current_user.role != UserRole.ADMIN:
+    """Obtener tareas pendientes de aprobación - solo administradores y superadmins"""
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can view pending approvals"
         )
 
+    # Base query para tareas completadas
     statement = select(TaskAssignment).where(TaskAssignment.status == TaskStatus.COMPLETED)
+
+    # Filtrar por familia para admins regulares
+    if current_user.role == UserRole.ADMIN:
+        # Admins solo ven aprobaciones de su familia
+        statement = statement.join(User, TaskAssignment.user_id == User.id).where(
+            User.family_id == current_user.family_id
+        )
+    # Superadmins ven todas las aprobaciones (no agregar filtro)
     
     # Apply date filters if provided
     if from_date:

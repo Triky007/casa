@@ -7,6 +7,8 @@ interface UserFormData {
   password: string;
   role: 'admin' | 'user';
   credits: string;
+  full_name: string;
+  email: string;
 }
 
 interface UserFormProps {
@@ -41,6 +43,23 @@ export default function UserForm({ formData, setFormData, isEdit = false }: User
         placeholder={isEdit ? "Dejar vacío para mantener la actual" : "Contraseña"}
         required={!isEdit}
         secureTextEntry
+        maxLength={100}
+      />
+
+      <FormField
+        label="Nombre completo (opcional)"
+        value={formData.full_name}
+        onChangeText={(text) => setFormData({ ...formData, full_name: text })}
+        placeholder="Nombre completo del usuario"
+        maxLength={100}
+      />
+
+      <FormField
+        label="Email (opcional)"
+        value={formData.email}
+        onChangeText={(text) => setFormData({ ...formData, email: text })}
+        placeholder="correo@ejemplo.com"
+        keyboardType="email-address"
         maxLength={100}
       />
 

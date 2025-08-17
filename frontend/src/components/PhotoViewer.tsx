@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { TaskCompletionPhoto } from '../types';
 import './PhotoViewer.css';
 
+// Helper function to get the correct base URL for images
+const getImageBaseUrl = () => {
+  // En Docker, usar la URL actual del navegador
+  const baseUrl = `${window.location.protocol}//${window.location.host}`;
+  console.log('🖼️ PhotoViewer - Using image base URL:', baseUrl);
+  return baseUrl;
+};
+
 interface PhotoViewerProps {
   photos: TaskCompletionPhoto[];
   isOpen: boolean;
@@ -33,9 +41,17 @@ export const PhotoViewer: React.FC<PhotoViewerProps> = ({
 
         <div className="photo-viewer-main">
           <img
-            src={selectedPhoto.file_path}
+            src={`${getImageBaseUrl()}${selectedPhoto.file_path}`}
             alt={selectedPhoto.original_filename}
             className="main-photo"
+            onError={(e) => {
+              console.error('❌ Error loading main photo:', e);
+              console.log('🔗 Main photo URL:', `${getImageBaseUrl()}${selectedPhoto.file_path}`);
+              console.log('🖼️ Image Base URL:', getImageBaseUrl());
+            }}
+            onLoad={() => {
+              console.log('✅ Main photo loaded successfully:', `${getImageBaseUrl()}${selectedPhoto.file_path}`);
+            }}
           />
         </div>
 
@@ -48,8 +64,15 @@ export const PhotoViewer: React.FC<PhotoViewerProps> = ({
                 onClick={() => setSelectedPhotoIndex(index)}
               >
                 <img
-                  src={photo.thumbnail_path || photo.file_path}
+                  src={`${getImageBaseUrl()}${photo.thumbnail_path || photo.file_path}`}
                   alt={photo.original_filename}
+                  onError={(e) => {
+                    console.error('❌ Error loading thumbnail:', e);
+                    console.log('🔗 Thumbnail URL:', `${getImageBaseUrl()}${photo.thumbnail_path || photo.file_path}`);
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Thumbnail loaded successfully:', `${getImageBaseUrl()}${photo.thumbnail_path || photo.file_path}`);
+                  }}
                 />
               </button>
             ))}

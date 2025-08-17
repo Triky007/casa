@@ -29,6 +29,7 @@ class Task(SQLModel, table=True):
     credits: int
     task_type: TaskType = Field(default=TaskType.INDIVIDUAL)
     periodicity: TaskPeriodicity = Field(default=TaskPeriodicity.DAILY)
+    family_id: Optional[int] = Field(default=None, foreign_key="family.id", index=True)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

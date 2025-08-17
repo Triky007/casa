@@ -5,8 +5,9 @@ from enum import Enum
 
 
 class UserRole(str, Enum):
-    ADMIN = "admin"
-    USER = "user"
+    SUPERADMIN = "superadmin"  # Puede gestionar familias
+    ADMIN = "admin"            # Administrador de familia
+    USER = "user"              # Usuario regular de familia
 
 
 class User(SQLModel, table=True):
@@ -17,3 +18,10 @@ class User(SQLModel, table=True):
     credits: int = Field(default=0)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relación con familia
+    family_id: Optional[int] = Field(default=None, foreign_key="family.id")
+
+    # Metadatos adicionales
+    full_name: Optional[str] = None
+    email: Optional[str] = None

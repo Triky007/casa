@@ -37,7 +37,7 @@ function StatsCard({ title, value, icon, color }: StatsCardProps) {
 }
 
 export default function DashboardScreen() {
-  const { user } = useAuth();
+  const { user, family } = useAuth();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recentTasks, setRecentTasks] = useState<TaskAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,6 +127,23 @@ export default function DashboardScreen() {
         <View style={styles.header}>
           <Text style={styles.greeting}>¡Hola, {user?.username}!</Text>
           <Text style={styles.subGreeting}>Tienes {user?.credits} créditos</Text>
+
+          {family && (
+            <View style={styles.familyCard}>
+              <View style={styles.familyHeader}>
+                <View style={styles.familyIcon}>
+                  <Text style={styles.familyIconText}>{family.name.charAt(0)}</Text>
+                </View>
+                <View style={styles.familyInfo}>
+                  <Text style={styles.familyName}>{family.name}</Text>
+                  {family.description && (
+                    <Text style={styles.familyDescription}>{family.description}</Text>
+                  )}
+                  <Text style={styles.familyTimezone}>Zona horaria: {family.timezone}</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
 
         {stats && (
@@ -340,5 +357,49 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 16,
     marginTop: 32,
+  },
+  familyCard: {
+    backgroundColor: '#EBF8FF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  familyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  familyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  familyIconText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  familyInfo: {
+    flex: 1,
+  },
+  familyName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E40AF',
+    marginBottom: 2,
+  },
+  familyDescription: {
+    fontSize: 14,
+    color: '#3730A3',
+    marginBottom: 2,
+  },
+  familyTimezone: {
+    fontSize: 12,
+    color: '#1D4ED8',
   },
 });

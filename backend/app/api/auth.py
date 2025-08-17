@@ -6,8 +6,9 @@ from typing import Optional
 import os
 from ..core.database import get_session
 from ..core.security import verify_password, get_password_hash, create_access_token, verify_token
-from ..models.user import User
-from ..schemas.auth import Token, UserLogin, UserCreate, UserResponse
+from ..models.user import User, UserRole
+from ..models.family import Family
+from ..schemas.auth import Token, UserLogin, UserCreate, UserResponse, LoginResponse, FamilyBasicInfo
 
 router = APIRouter(prefix="/api/user", tags=["user"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login")
@@ -49,7 +50,7 @@ async def get_current_user(
     return user
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=LoginResponse)
 async def login(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -81,7 +82,90 @@ async def login(
         path="/"
     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Obtener información de la familia si el usuario pertenece a una
+    family_info = None
+    if user.family_id:
+        family = session.get(Family, user.family_id)
+        if family:
+            family_info = FamilyBasicInfo(
+                id=family.id,
+                name=family.name,
+                description=family.description,
+                timezone=family.timezone
+            )
+
+    return LoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse.from_orm(user),
+        family=family_info
+    )
+
+
+@router.post("/login-with-family", response_model=LoginResponse)
+async def login_with_family(
+    response: Response,
+    login_data: UserLogin,
+    session: Session = Depends(get_session)
+):
+    """Login que incluye validación de familia"""
+    statement = select(User).where(User.username == login_data.username)
+    user = session.exec(statement).first()
+
+    if not user or not verify_password(login_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Validar familia para usuarios que no son superadmin
+    if user.role != UserRole.SUPERADMIN:
+        if not login_data.family_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Family selection is required"
+            )
+
+        if user.family_id != login_data.family_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User does not belong to the selected family"
+            )
+
+    access_token = create_access_token(data={"sub": user.username})
+
+    # Set secure HTTP-only cookie
+    is_production = os.getenv("ENVIRONMENT", "development") == "production"
+
+    response.set_cookie(
+        key="auth_token",
+        value=access_token,
+        httponly=True,
+        secure=is_production,
+        samesite="none" if is_production else "lax",
+        max_age=1800,
+        path="/"
+    )
+
+    # Obtener información de la familia
+    family_info = None
+    if user.family_id:
+        family = session.get(Family, user.family_id)
+        if family:
+            family_info = FamilyBasicInfo(
+                id=family.id,
+                name=family.name,
+                description=family.description,
+                timezone=family.timezone
+            )
+
+    return LoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse.from_orm(user),
+        family=family_info
+    )
 
 
 @router.post("/register", response_model=UserResponse)

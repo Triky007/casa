@@ -15,6 +15,35 @@ from .auth import get_current_user
 router = APIRouter(prefix="/api/tasks", tags=["tasks-management"])
 
 
+def validate_family_access(current_user: User, target_user: User = None, target_family_id: int = None):
+    """Validar que el usuario tenga acceso a la familia especificada"""
+    # Superadmins tienen acceso a todo
+    if current_user.role == UserRole.SUPERADMIN:
+        return True
+
+    # Determinar la familia objetivo
+    family_id = target_family_id if target_family_id is not None else (target_user.family_id if target_user else None)
+
+    # Usuarios deben pertenecer a la misma familia
+    if current_user.family_id != family_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes acceso a datos de otras familias"
+        )
+
+    return True
+
+
+def require_admin_or_superadmin(current_user: User = Depends(get_current_user)):
+    """Middleware para requerir permisos de admin o superadmin"""
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Se requieren permisos de administrador"
+        )
+    return current_user
+
+
 def build_assignment_response(assignment: TaskAssignment, session: Session) -> TaskAssignmentResponse:
     """Helper function to build TaskAssignmentResponse with related data"""
     assignment_dict = assignment.dict()
@@ -82,21 +111,8 @@ async def assign_task(
                 detail="Collective task already assigned for today"
             )
     
-    # For individual tasks, check if user already has an individual task for today
-    if task.task_type == TaskType.INDIVIDUAL:
-        individual_assignment = session.exec(
-            select(TaskAssignment).join(Task).where(
-                TaskAssignment.user_id == current_user.id,
-                TaskAssignment.scheduled_date == today,
-                Task.task_type == TaskType.INDIVIDUAL
-            )
-        ).first()
-        
-        if individual_assignment:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User already has an individual task assigned for today"
-            )
+    # Nota: Permitimos múltiples tareas individuales por día
+    # Solo verificamos que no sea la misma tarea específica (ya verificado arriba)
     
     # Create the assignment
     assignment = TaskAssignment(
@@ -153,14 +169,24 @@ async def get_all_assignments(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """Obtener todas las asignaciones - solo administradores"""
-    if current_user.role != UserRole.ADMIN:
+    """Obtener todas las asignaciones - solo administradores y superadmins"""
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can view all assignments"
         )
-    
-    statement = select(TaskAssignment)
+
+    # Filtrar por familia para admins, superadmins ven todo
+    if current_user.role == UserRole.SUPERADMIN:
+        statement = select(TaskAssignment)
+    else:
+        # Admins solo ven asignaciones de usuarios de su familia
+        # Especificar JOIN explícito para evitar ambigüedad
+        statement = (
+            select(TaskAssignment)
+            .join(User, TaskAssignment.user_id == User.id)
+            .where(User.family_id == current_user.family_id)
+        )
     
     # Apply date filters if provided
     if from_date:
@@ -250,36 +276,53 @@ async def complete_task_with_photo(
         )
 
     try:
-        # Guardar el archivo
-        file_info = await save_uploaded_file(file, "task-photos")
+        print(f"📸 Completando tarea {assignment_id} con foto para usuario {current_user.username}")
+        print(f"📁 Archivo recibido: {file.filename}, tipo: {file.content_type}, tamaño: {file.size}")
 
-        # Crear thumbnail
-        thumbnail_path = await create_thumbnail(file_info["file_path"], "task-photos/thumbnails")
+        # Guardar el archivo
+        print(f"💾 Guardando archivo...")
+        filename, web_path, file_size = await save_uploaded_file(file)
+        print(f"✅ Archivo guardado: filename={filename}, web_path={web_path}, size={file_size}")
+
+        # Crear thumbnail (necesitamos la ruta del sistema)
+        print(f"🖼️ Creando thumbnail...")
+        full_path = os.path.join("uploads/task-photos", filename)
+        thumbnail_path = create_thumbnail(full_path, filename)
+        print(f"✅ Thumbnail creado: {thumbnail_path}")
 
         # Crear registro en la base de datos
+        print(f"💾 Creando registro de foto en BD...")
         photo = TaskCompletionPhoto(
             task_assignment_id=assignment_id,
-            filename=file_info["filename"],
+            filename=filename,
             original_filename=file.filename,
-            file_path=file_info["web_path"],
+            file_path=web_path,
             thumbnail_path=thumbnail_path,
-            file_size=file_info["file_size"],
+            file_size=file_size,
             mime_type=file.content_type
         )
 
         session.add(photo)
+        print(f"✅ Registro de foto agregado")
 
         # Marcar la tarea como completada
+        print(f"✅ Marcando tarea como completada...")
         assignment.status = TaskStatus.COMPLETED
         assignment.completed_at = datetime.utcnow()
         session.add(assignment)
 
+        print(f"💾 Guardando cambios en BD...")
         session.commit()
         session.refresh(assignment)
+        print(f"🎉 Tarea completada exitosamente")
 
         return build_assignment_response(assignment, session)
 
     except Exception as e:
+        print(f"❌ Error completando tarea con foto: {e}")
+        print(f"📍 Tipo de error: {type(e).__name__}")
+        import traceback
+        print(f"🔍 Traceback: {traceback.format_exc()}")
         session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

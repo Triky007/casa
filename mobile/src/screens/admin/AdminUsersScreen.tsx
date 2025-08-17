@@ -34,6 +34,8 @@ export default function AdminUsersScreen() {
     password: '',
     role: 'user' as 'admin' | 'user',
     credits: '0',
+    full_name: '',
+    email: '',
   });
 
   useEffect(() => {
@@ -114,6 +116,8 @@ export default function AdminUsersScreen() {
       password: '',
       role: 'user',
       credits: '0',
+      full_name: '',
+      email: '',
     });
     setShowCreateModal(true);
   };
@@ -125,6 +129,8 @@ export default function AdminUsersScreen() {
       password: '', // No mostrar la contraseña actual
       role: user.role,
       credits: user.credits.toString(),
+      full_name: user.full_name || '',
+      email: user.email || '',
     });
     setShowEditModal(true);
   };
@@ -138,6 +144,8 @@ export default function AdminUsersScreen() {
       password: '',
       role: 'user',
       credits: '0',
+      full_name: '',
+      email: '',
     });
   };
 
@@ -153,6 +161,8 @@ export default function AdminUsersScreen() {
         password: formData.password,
         role: formData.role,
         credits: parseInt(formData.credits) || 0,
+        full_name: formData.full_name?.trim() || null,
+        email: formData.email?.trim() || null,
       });
       await loadUsers();
       closeModals();
@@ -176,7 +186,7 @@ export default function AdminUsersScreen() {
       };
 
       // Solo incluir la contraseña si se ha proporcionado una nueva
-      if (formData.password.trim() !== '') {
+      if (formData.password?.trim() !== '') {
         updateData.password = formData.password;
       }
 

@@ -4,6 +4,14 @@ import api from '../../utils/api';
 import { TaskCompletionPhoto } from '../../types';
 import { PhotoViewer } from '../../components/PhotoViewer';
 
+// Helper function to get the correct base URL for images
+const getImageBaseUrl = () => {
+  // En Docker, usar la URL actual del navegador
+  const baseUrl = `${window.location.protocol}//${window.location.host}`;
+  console.log('🖼️ Using image base URL:', baseUrl);
+  return baseUrl;
+};
+
 interface TaskSubmission {
   id: number;
   task_id: number;
@@ -62,6 +70,11 @@ const TaskApprovals: React.FC = () => {
       const mappedSubmissions: TaskSubmission[] = allAssignmentsResponse.data.map((assignment: any) => {
         const task = assignment.task;
         const user = assignment.user;
+
+        // Debug logging for assignments with photos
+        if (assignment.photos && assignment.photos.length > 0) {
+          console.log(`🔍 Assignment ${assignment.id} has photos:`, assignment.photos);
+        }
 
         return {
           id: assignment.id,
@@ -382,7 +395,13 @@ const TaskApprovals: React.FC = () => {
                       )}
                       <button
                         className="text-blue-600 hover:text-blue-900 ml-2"
-                        onClick={() => setSelectedSubmission(submission)}
+                        onClick={() => {
+                          console.log('🚀 CLICK EN VER DETALLES - INICIO');
+                          console.log('🔍 Opening details for submission:', submission);
+                          console.log('📸 Photos in submission:', submission.photos);
+                          alert('¡Hiciste clic en Ver detalles! Revisa la consola.');
+                          setSelectedSubmission(submission);
+                        }}
                       >
                         Ver detalles
                       </button>
@@ -507,10 +526,26 @@ const TaskApprovals: React.FC = () => {
                               {selectedSubmission.photos.map((photo, index) => (
                                 <div key={photo.id} className="relative">
                                   <img
-                                    src={photo.thumbnail_path || photo.file_path}
+                                    src={`${getImageBaseUrl()}${photo.thumbnail_path || photo.file_path}`}
                                     alt={`Foto ${index + 1}`}
                                     className="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
                                     onClick={() => handleShowPhotos(selectedSubmission.photos!)}
+                                    onError={(e) => {
+                                      console.error('❌ Error loading image:', e);
+                                      console.log('🔗 Failed Image URL:', `${getImageBaseUrl()}${photo.thumbnail_path || photo.file_path}`);
+                                      console.log('📸 Photo object:', photo);
+                                      console.log('🖼️ Image Base URL:', getImageBaseUrl());
+                                      // Mostrar un placeholder visual
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.backgroundColor = '#f3f4f6';
+                                      target.style.display = 'flex';
+                                      target.style.alignItems = 'center';
+                                      target.style.justifyContent = 'center';
+                                      target.alt = '❌ Error cargando imagen';
+                                    }}
+                                    onLoad={() => {
+                                      console.log('✅ Image loaded successfully:', `${getImageBaseUrl()}${photo.thumbnail_path || photo.file_path}`);
+                                    }}
                                   />
                                 </div>
                               ))}

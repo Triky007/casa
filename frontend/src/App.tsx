@@ -18,6 +18,9 @@ import AdminRewards from './pages/admin/AdminRewards';
 import TaskApprovals from './pages/admin/TaskApprovals';
 import AdminSettings from './pages/admin/AdminSettings';
 
+// Páginas de superadministrador
+import SuperAdminPage from './pages/SuperAdminPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -54,7 +57,14 @@ function App() {
               <Route path="task-approvals" element={<TaskApprovals />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
-            
+
+            {/* Ruta de superadministrador */}
+            <Route path="/superadmin" element={
+              <ProtectedRoute superAdminOnly>
+                <SuperAdminPage />
+              </ProtectedRoute>
+            } />
+
             {/* Redirección para rutas no encontradas */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
