@@ -22,20 +22,52 @@ const getDevelopmentApiUrl = () => {
 export const ENVIRONMENTS = {
   development: {
     name: 'development',
-    apiUrl: getDevelopmentApiUrl(),
+    apiUrl: process.env.EXPO_PUBLIC_API_URL || getDevelopmentApiUrl(),
     timeout: 10000,
-    debug: true
+    debug: process.env.EXPO_PUBLIC_DEBUG === 'true' || true
   },
   production: {
     name: 'production',
-    apiUrl: 'https://api.family.triky.app',
+    apiUrl: process.env.EXPO_PUBLIC_API_URL || 'https://api.family.triky.app',
     timeout: 30000,
-    debug: false
+    debug: process.env.EXPO_PUBLIC_DEBUG === 'true' || false
   }
 };
 
-// Cambiar aquí para alternar entre entornos
-export const CURRENT_ENVIRONMENT = 'development'; // 'development' | 'production'
+// Función para detectar automáticamente el entorno
+const detectEnvironment = (): 'development' | 'production' => {
+  // Primero, intentar usar variable de entorno de Expo
+  const envFromExpo = process.env.EXPO_PUBLIC_ENVIRONMENT;
+  if (envFromExpo === 'production' || envFromExpo === 'development') {
+    return envFromExpo;
+  }
+
+  // Si estamos en web, podemos usar window.location
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'family.triky.app' || hostname === 'api.family.triky.app') {
+      return 'production';
+    }
+    return 'development';
+  }
+
+  // Para móvil, usar Constants para detectar si es una build de producción
+  try {
+    // @ts-ignore
+    const Constants = require('expo-constants').default;
+    if (Constants.manifest?.releaseChannel || Constants.executionEnvironment === 'standalone') {
+      return 'production';
+    }
+  } catch (e) {
+    // Si no está disponible expo-constants, continuar
+  }
+
+  // Por defecto, usar development para desarrollo local
+  return 'development';
+};
+
+// Detectar entorno automáticamente
+export const CURRENT_ENVIRONMENT = detectEnvironment();
 
 // Configuración activa
 export const config = ENVIRONMENTS[CURRENT_ENVIRONMENT as keyof typeof ENVIRONMENTS];

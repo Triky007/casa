@@ -4,12 +4,14 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "start:dev": "cp .env.development .env && expo start",
+    "start:prod": "cp .env.production .env && expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "env:dev": "node scripts/switch-environment.js development",
-    "env:prod": "node scripts/switch-environment.js production",
-    "build:prod": "npm run env:prod && expo build"
+    "env:dev": "node scripts/set-environment.js development",
+    "env:prod": "node scripts/set-environment.js production",
+    "build:prod": "cp .env.production .env && expo build"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
