@@ -124,6 +124,11 @@ Esta guía te mostrará cómo crear un archivo .ipa para tu aplicación iOS util
 - Limpia el proyecto (Product > Clean Build Folder)
 - Reinicia Xcode
 
+### Error "The branch is not associated with the workflow"
+
+- Este error ocurre cuando intentas generar un build manual desde una rama que no está configurada en el workflow de CI/CD
+- Consulta el archivo `CI_CD_WORKFLOW_GUIDE.md` para instrucciones detalladas sobre cómo asociar ramas a workflows
+
 ## Recursos adicionales
 
 - [Documentación oficial de Xcode](https://developer.apple.com/documentation/xcode)
