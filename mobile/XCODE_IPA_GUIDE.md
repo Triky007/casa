@@ -50,10 +50,19 @@ Esta guía te mostrará cómo crear un archivo .ipa para tu aplicación iOS util
 
 ### Iconos de la aplicación
 
-1. En el navegador de proyectos, selecciona "Assets.xcassets"
-2. Haz clic derecho y selecciona "App Icons & Launch Images" > "New iOS App Icon"
-3. Arrastra tus iconos a los espacios correspondientes
-   - Puedes usar los iconos de la carpeta `assets` de tu proyecto Expo
+1. Utiliza el script `generate-ios-icons.sh` para generar automáticamente todos los tamaños de iconos necesarios:
+   ```bash
+   ./generate-ios-icons.sh
+   ```
+   Este script utiliza ImageMagick para crear los iconos a partir del icono principal en `assets/icon.png`.
+
+2. Asegúrate de que el archivo `Info.plist` contenga la clave `CFBundleIconName` con el valor `AppIcon`:
+   ```xml
+   <key>CFBundleIconName</key>
+   <string>AppIcon</string>
+   ```
+
+3. Verifica que el archivo `Contents.json` en `Images.xcassets/AppIcon.appiconset/` referencie correctamente todos los archivos de iconos generados.
 
 ### Pantalla de inicio (Launch Screen)
 
@@ -107,6 +116,25 @@ Esta guía te mostrará cómo crear un archivo .ipa para tu aplicación iOS util
 
 ## Solución de problemas comunes
 
+### Error 'React/RCTBridgeDelegate.h' file not found
+
+- Este error ocurre porque el proyecto intenta usar componentes de React Native, pero las dependencias no están correctamente instaladas
+- Solución: Modificar `AppDelegate.h` y `AppDelegate.m` para eliminar las referencias a React Native
+- Para más detalles, consulta el archivo `SOLUCION_ERROR_RCT_BRIDGE_DELEGATE.md`
+
+### Error del script React Native durante el archivado
+
+- Error: `../node_modules/react-native/scripts/react-native-xcode.sh: No such file or directory`
+- Solución: Modificar el archivo `project.pbxproj` para cambiar el script por uno simple
+- Para más detalles, consulta el archivo `SOLUCION_ERROR_SCRIPT_REACT_NATIVE.md`
+
+### Errores de validación de iconos
+
+- Error: `Missing required icon file. The bundle does not contain an app icon for iPhone / iPod Touch of exactly '120x120' pixels`
+- Error: `Missing Info.plist value. A value for the Info.plist key 'CFBundleIconName' is missing`
+- Solución: Ejecutar el script `generate-ios-icons.sh` y agregar la clave `CFBundleIconName` al Info.plist
+- Para más detalles, consulta el archivo `SOLUCION_ICONOS_IOS.md`
+
 ### Error de certificado
 
 - Asegúrate de tener un certificado de desarrollo válido en tu cuenta de Apple Developer
@@ -118,7 +146,7 @@ Esta guía te mostrará cómo crear un archivo .ipa para tu aplicación iOS util
 - Asegúrate de que los dispositivos estén registrados en tu cuenta de Apple Developer
 - Intenta eliminar y volver a crear los perfiles de aprovisionamiento
 
-### Errores de compilación
+### Errores de compilación generales
 
 - Verifica que no haya errores en el código
 - Limpia el proyecto (Product > Clean Build Folder)
