@@ -12,7 +12,9 @@ fi
 # Crear directorios necesarios
 echo "📁 Creando estructura de directorios para iOS..."
 mkdir -p ios/FamilyTrikyApp
+mkdir -p ios/FamilyTrikyApp/FamilyTrikyApp
 mkdir -p ios/FamilyTrikyApp/Images.xcassets/AppIcon.appiconset
+mkdir -p ios/FamilyTrikyApp/FamilyTrikyApp/Images.xcassets/AppIcon.appiconset
 mkdir -p ios/FamilyTrikyApp/FamilyTrikyApp.xcodeproj
 
 # Limpiar directorio ios/FamilyTrikyApp.xcodeproj si existe
@@ -635,12 +637,21 @@ cat > ios/FamilyTrikyApp/FamilyTrikyApp.xcodeproj/project.pbxproj << 'EOL'
 }
 EOL
 
+# Copiar archivos a la estructura correcta de directorios
+echo "📋 Copiando archivos a la estructura correcta..."
+cp ios/FamilyTrikyApp/AppDelegate.h ios/FamilyTrikyApp/FamilyTrikyApp/
+cp ios/FamilyTrikyApp/AppDelegate.m ios/FamilyTrikyApp/FamilyTrikyApp/
+cp ios/FamilyTrikyApp/Info.plist ios/FamilyTrikyApp/FamilyTrikyApp/
+cp ios/FamilyTrikyApp/main.m ios/FamilyTrikyApp/FamilyTrikyApp/
+cp ios/FamilyTrikyApp/LaunchScreen.storyboard ios/FamilyTrikyApp/FamilyTrikyApp/
+cp -r ios/FamilyTrikyApp/Images.xcassets/* ios/FamilyTrikyApp/FamilyTrikyApp/Images.xcassets/
+
 echo "✅ Estructura básica del proyecto iOS creada"
 echo ""
 echo "Para continuar con la creación del archivo .ipa:"
 echo "1. Abre Xcode"
 echo "2. Selecciona 'Open a project or file'"
-echo "3. Navega hasta la carpeta 'ios' y selecciona 'FamilyTrikyApp.xcodeproj'"
+echo "3. Navega hasta la carpeta 'ios/FamilyTrikyApp' y selecciona 'FamilyTrikyApp.xcodeproj'"
 echo "4. El proyecto debería abrirse correctamente en Xcode"
 echo "5. Sigue las instrucciones en XCODE_IPA_GUIDE.md para generar el archivo .ipa"
 echo ""
